@@ -1,0 +1,1598 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="author" content="Ferrite">
+<meta name="description" content="三国志战略版抽卡日历 v2.1：记录免费/半价/五连抽、抽卡时间、橙将与核心保底、30 抽保底进度。单文件网页，数据保存在本机。by Ferrite">
+<meta name="color-scheme" content="dark">
+<title>三战抽卡日历 v2.1</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='88' fill='%23e7b95f'%3E%E6%98%9F%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#12100e; --bg2:#191510;
+  --panel:rgba(255,255,255,.035);
+  --line:rgba(231,185,105,.16); --line-strong:rgba(231,185,105,.38);
+  --gold:#e7b95f; --gold-hi:#f7dfa5; --gold-deep:#b9822c;
+  --ink:#efe7d6; --muted:#a89c85; --muted2:#7d7364;
+  --purple:#a99be0; --purple-bg:rgba(140,120,220,.15); --purple-line:rgba(160,145,230,.38);
+  --red:#e06a5a;
+  --radius:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--ink); line-height:1.5; min-height:100%;
+  background:
+    radial-gradient(1100px 520px at 12% -10%, rgba(231,185,105,.075), transparent 62%),
+    radial-gradient(900px 520px at 92% -5%, rgba(140,90,220,.055), transparent 60%),
+    radial-gradient(800px 600px at 60% 110%, rgba(120,60,30,.09), transparent 65%),
+    linear-gradient(#131110,#0d0b09);
+  background-attachment:fixed;
+}
+.app{max-width:1220px;margin:0 auto;padding:26px 20px 40px}
+.topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{
+  width:52px;height:52px;border-radius:50%;flex:none;
+  display:flex;align-items:center;justify-content:center;
+  font-family:KaiTi,"STKaiti","Noto Serif SC",serif;font-size:28px;font-weight:700;color:#2c1f0a;
+  background:linear-gradient(135deg,#f7dfa5,#dfa63f);
+  box-shadow:0 0 24px rgba(231,185,105,.35),inset 0 1px 0 rgba(255,255,255,.6);
+}
+h1{
+  font-family:KaiTi,"STKaiti","Noto Serif SC",serif;
+  font-size:30px;letter-spacing:.12em;font-weight:700;
+  background:linear-gradient(180deg,#fbeecb,#d9a44a);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 2px 10px rgba(231,185,105,.22));
+}
+.sub{color:var(--muted);font-size:13px;margin-top:2px;letter-spacing:.06em}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.btn{
+  border:1px solid var(--line-strong);border-radius:10px;
+  background:rgba(231,185,105,.07);color:var(--gold-hi);
+  padding:8px 15px;font-size:13.5px;cursor:pointer;
+  transition:transform .18s,background .18s,box-shadow .18s;
+  font-family:inherit;letter-spacing:.05em;white-space:nowrap;
+}
+.btn:hover{background:rgba(231,185,105,.17);transform:translateY(-1px);box-shadow:0 6px 16px rgba(0,0,0,.35)}
+.btn:active{transform:translateY(0)}
+.btn.primary{
+  background:linear-gradient(135deg,#f7dfa5,#e0a843);color:#362608;font-weight:700;border:none;
+  box-shadow:0 6px 18px rgba(231,185,105,.25);
+}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.danger{color:#f0958a;border-color:rgba(224,106,90,.4)}
+.btn.danger:hover{background:rgba(224,106,90,.12)}
+.btn.small{padding:6px 11px;font-size:12.5px}
+.panel{
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));
+  border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:0 14px 36px rgba(0,0,0,.35);
+  animation:rise .5s ease both;
+}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.dashboard{display:grid;grid-template-columns:minmax(330px,1.12fr) minmax(270px,.92fr) minmax(250px,1fr);gap:14px;margin-bottom:14px}
+.pity{display:flex;align-items:center;gap:20px;padding:20px 22px;overflow:hidden;position:relative}
+.pity::before{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:radial-gradient(420px 220px at 12% 20%, rgba(231,185,105,.09), transparent 70%);
+}
+.pity.draw-pity::before{
+  background:radial-gradient(420px 220px at 12% 20%, rgba(160,145,230,.10), transparent 70%);
+}
+.ring-wrap{position:relative;width:142px;height:142px;flex:none}
+.ring{width:142px;height:142px;display:block}
+.ring-bg{fill:none;stroke:rgba(231,185,105,.13);stroke-width:9}
+.draw-pity .ring-bg{stroke:rgba(160,145,230,.16)}
+.ring-fg{
+  fill:none;stroke:url(#goldGrad);stroke-width:9;stroke-linecap:round;
+  transform:rotate(-90deg);transform-origin:71px 71px;
+  transition:stroke-dashoffset .7s cubic-bezier(.22,1,.36,1);
+  filter:drop-shadow(0 0 7px rgba(231,185,95,.5));
+}
+.draw-pity .ring-fg{
+  stroke:url(#purpleGrad);
+  filter:drop-shadow(0 0 7px rgba(160,145,230,.55));
+}
+.ring-wrap.ready .ring-fg{animation:ringPulse 1.3s ease-in-out infinite}
+@keyframes ringPulse{0%,100%{filter:drop-shadow(0 0 6px rgba(231,185,95,.5))}50%{filter:drop-shadow(0 0 16px rgba(247,223,165,1))}}
+.draw-pity .ring-wrap.ready .ring-fg{animation:ringPulseP 1.3s ease-in-out infinite}
+@keyframes ringPulseP{0%,100%{filter:drop-shadow(0 0 6px rgba(160,145,230,.55))}50%{filter:drop-shadow(0 0 16px rgba(201,189,242,1))}}
+.ring-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.ringNumStyle{font-family:KaiTi,"STKaiti","Noto Serif SC",serif;font-size:42px;font-weight:800;line-height:1;color:var(--gold-hi);text-shadow:0 0 22px rgba(231,185,95,.45)}
+#ringNum{font-family:KaiTi,"STKaiti","Noto Serif SC",serif;font-size:42px;font-weight:800;line-height:1;color:var(--gold-hi);text-shadow:0 0 22px rgba(231,185,95,.45)}
+.draw-pity #ringNum2{color:#d9cfff;text-shadow:0 0 22px rgba(160,145,230,.5)}
+#ringNum2{font-family:KaiTi,"STKaiti","Noto Serif SC",serif;font-size:42px;font-weight:800;line-height:1;color:#d9cfff;text-shadow:0 0 22px rgba(160,145,230,.5)}
+.ring-wrap.ready #ringNum{font-size:36px}
+.ring-wrap.ready #ringNum2{font-size:36px}
+#ringUnit,#ringUnit2{font-size:11px;color:var(--muted);letter-spacing:.08em}
+.pity-main{flex:1;min-width:0;position:relative}
+.pity-title{font-size:12px;letter-spacing:.22em;color:var(--muted);margin-bottom:7px}
+.pity-title b{color:var(--gold);font-weight:600}
+.draw-pity .pity-title b{color:var(--purple);font-weight:600}
+.pity-line{
+  font-family:KaiTi,"STKaiti","Noto Serif SC",serif;
+  font-size:19px;font-weight:700;color:var(--ink);line-height:1.35;
+}
+.pity-line.ready{
+  color:var(--gold-hi);
+  text-shadow:0 0 20px rgba(231,185,95,.55);
+  animation:textGlow 1.4s ease-in-out infinite;
+}
+.draw-pity .pity-line.ready{
+  color:#d9cfff;
+  text-shadow:0 0 20px rgba(160,145,230,.55);
+}
+@keyframes textGlow{0%,100%{opacity:1}50%{opacity:.72}}
+.pity-sub{color:var(--muted);font-size:12.5px;margin-top:5px}
+.dots{display:flex;gap:7px;margin:11px 0 9px}
+.dot{width:13px;height:13px;border-radius:50%;border:1px solid rgba(231,185,105,.4);background:transparent;transition:.3s}
+.dot.filled{background:linear-gradient(135deg,#c6b6f5,#8d7fd0);border-color:transparent;box-shadow:0 0 9px rgba(160,145,230,.45)}
+.dot.guarantee{border-color:var(--gold);border-style:dashed}
+.dot.guarantee.ready{
+  border-style:solid;border-color:transparent;
+  background:linear-gradient(135deg,#f7dfa5,#e2ab46);
+  box-shadow:0 0 14px rgba(231,185,95,.85);
+  animation:dotPulse 1.1s ease-in-out infinite;
+}
+@keyframes dotPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.25)}}
+.last-core{font-size:12px;color:var(--muted2);margin-top:4px}
+.last-core b{color:var(--purple);font-weight:600}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat{padding:14px 16px;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.stat-num{font-family:KaiTi,"STKaiti","Noto Serif SC",serif;font-size:26px;font-weight:800;color:var(--ink);line-height:1.15}
+.stat-num.gold{color:var(--gold-hi);text-shadow:0 0 16px rgba(231,185,95,.35)}
+.stat-num.purple{color:#d9cfff;text-shadow:0 0 16px rgba(160,145,230,.4)}
+.stat-label{font-size:11.5px;color:var(--muted);letter-spacing:.12em}
+.quick-panel{padding:16px 20px;margin-bottom:14px}
+.quick-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.quick-title{font-family:KaiTi,"STKaiti",serif;font-size:18px;font-weight:700;color:var(--gold-hi);letter-spacing:.06em}
+.quick-status{font-size:12.5px;color:var(--muted)}
+.quick-status b{color:var(--gold);font-weight:600}
+.quick-status .ok{color:#8fd08a;font-weight:600}
+.quick-status .wait{color:var(--muted2)}
+.quick-btns{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.quick-btns .spacer{flex:1}
+.time-field{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--muted)}
+.time-field input{
+  background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:9px;
+  color:var(--gold-hi);padding:6px 8px;font-size:13px;font-family:inherit;outline:none;
+}
+.time-field input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(231,185,105,.12)}
+.calendar-panel{padding:20px 22px 22px}
+.cal-head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.cal-title{
+  font-family:KaiTi,"STKaiti","Noto Serif SC",serif;
+  font-size:21px;font-weight:700;letter-spacing:.08em;color:var(--gold-hi);
+  min-width:150px;text-align:center;
+}
+.nav-btn{
+  width:36px;height:36px;border-radius:10px;border:1px solid var(--line);
+  background:rgba(255,255,255,.03);color:var(--gold);font-size:18px;cursor:pointer;
+  transition:.18s;font-family:inherit;line-height:1;
+}
+.nav-btn:hover{background:rgba(231,185,105,.14);border-color:var(--line-strong)}
+.today-btn{margin-left:auto}
+.weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:8px}
+.weekdays span{
+  text-align:center;font-size:12.5px;color:var(--muted);letter-spacing:.2em;
+  font-family:KaiTi,"STKaiti",serif;
+}
+.weekdays span:nth-child(6),.weekdays span:nth-child(7){color:#c9a06a}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;user-select:none}
+.grid.anim{animation:gridIn .3s ease both}
+@keyframes gridIn{from{opacity:.15;transform:translateY(7px)}to{opacity:1;transform:none}}
+.cell{
+  position:relative;min-height:112px;padding:8px 9px;border-radius:12px;cursor:pointer;
+  border:1px solid rgba(255,255,255,.055);
+  background:linear-gradient(180deg,rgba(255,255,255,.032),rgba(255,255,255,.008));
+  transition:transform .18s,border-color .18s,background .18s,box-shadow .18s;
+}
+.cell:hover{
+  transform:translateY(-2px);border-color:var(--line-strong);
+  background:linear-gradient(180deg,rgba(231,185,105,.09),rgba(231,185,105,.02));
+  box-shadow:0 10px 22px rgba(0,0,0,.38);
+}
+.cell::after{
+  content:"+ 记录";position:absolute;right:9px;bottom:6px;
+  font-size:10.5px;color:var(--gold);opacity:0;transition:opacity .18s;letter-spacing:.08em;
+}
+.cell:hover::after{opacity:.65}
+.cell.other{opacity:.35}
+.cell.today{border-color:rgba(231,185,105,.75);box-shadow:0 0 0 1px rgba(231,185,105,.35),0 0 24px rgba(231,185,105,.12)}
+.cell-top{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.dnum{
+  width:25px;height:25px;border-radius:8px;display:flex;align-items:center;justify-content:center;
+  font-size:13.5px;font-weight:600;color:var(--muted);
+}
+.cell.today .dnum{background:linear-gradient(135deg,#f7dfa5,#e0a843);color:#2c1f0a;box-shadow:0 0 12px rgba(231,185,105,.4)}
+.dload{font-size:10.5px;color:var(--muted2);letter-spacing:.04em;white-space:nowrap}
+.cell.today .dload{color:var(--muted)}
+.core-badge{color:var(--gold);font-size:12px;text-shadow:0 0 8px rgba(231,185,105,.7)}
+.note-badge{width:6px;height:6px;border-radius:50%;background:rgba(231,185,105,.55);margin-left:auto;flex:none}
+.chips{display:flex;flex-direction:column;gap:4px;align-items:flex-start}
+.chip{
+  display:inline-flex;align-items:center;gap:3px;max-width:100%;
+  font-size:11.5px;padding:1.5px 8px;border-radius:999px;line-height:1.7;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.chip.core{
+  background:linear-gradient(135deg,#f7dfa5,#e2ab46);color:#3a2a10;font-weight:700;
+  box-shadow:0 0 10px rgba(231,185,105,.3);
+}
+.chip.normal{background:var(--purple-bg);color:#c9bdf2;border:1px solid var(--purple-line)}
+.more{font-size:11px;color:var(--muted2);padding-left:2px}
+.history-panel{padding:20px 22px 18px;margin-top:14px}
+.history-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.history-title{font-family:KaiTi,"STKaiti",serif;font-size:18px;font-weight:700;color:var(--gold-hi)}
+.history-sub{font-size:12px;color:var(--muted2)}
+.history-list{display:flex;flex-direction:column;gap:6px;max-height:330px;overflow:auto;padding-right:4px}
+.hrow{
+  display:flex;align-items:center;gap:10px;padding:7px 12px;border-radius:10px;
+  background:rgba(255,255,255,.028);border:1px solid rgba(255,255,255,.05);
+  font-size:12.5px;flex-wrap:wrap;
+}
+.hrow .hdate{color:var(--muted);min-width:88px}
+.hrow .hname{font-weight:700;color:#c9bdf2}
+.hrow .hname.core{color:var(--gold-hi)}
+.hrow .hpity{color:var(--muted2)}
+.hrow .hpity b{color:#e8c887;font-weight:700}
+.hrow .hcore{color:#3a2a10;background:linear-gradient(135deg,#f7dfa5,#e2ab46);border-radius:999px;padding:0 9px;font-weight:700;font-size:11px}
+footer{margin-top:18px;text-align:center;font-size:12px;color:var(--muted2);letter-spacing:.05em}
+.modal{
+  position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;
+  background:rgba(8,6,4,.68);backdrop-filter:blur(6px);padding:20px;
+}
+.modal.open{display:flex;animation:fade .18s ease}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.modal-card{
+  width:min(580px,100%);max-height:84vh;overflow:auto;
+  background:linear-gradient(180deg,#221d17,#16120e);
+  border:1px solid var(--line-strong);border-radius:20px;padding:22px 24px;
+  box-shadow:0 34px 90px rgba(0,0,0,.65);
+  animation:pop .24s cubic-bezier(.22,1.2,.36,1) both;
+}
+@keyframes pop{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:none}}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.modal-head h3{
+  font-family:KaiTi,"STKaiti","Noto Serif SC",serif;
+  font-size:21px;color:var(--gold-hi);letter-spacing:.06em;font-weight:700;
+}
+.icon-btn{
+  width:32px;height:32px;border-radius:9px;border:1px solid var(--line);
+  background:transparent;color:var(--muted);cursor:pointer;font-size:15px;transition:.18s;font-family:inherit;
+}
+.icon-btn:hover{color:var(--gold-hi);border-color:var(--line-strong);background:rgba(231,185,105,.1)}
+.hint{font-size:12.5px;color:var(--muted2);margin:8px 0 14px;line-height:1.7}
+.field-label{display:block;font-size:12.5px;color:var(--muted);letter-spacing:.08em;margin:14px 0 7px}
+.draw-list{display:flex;flex-direction:column;gap:6px}
+.draw-empty{font-size:12.5px;color:var(--muted2);padding:6px 2px}
+.draw-row{
+  display:flex;align-items:center;gap:10px;
+  background:rgba(255,255,255,.04);border:1px solid var(--line);
+  border-radius:10px;padding:6px 10px;font-size:13px;
+}
+.draw-row .dk{font-weight:600}
+.draw-row .dk.free{color:#8fd08a}
+.draw-row .dk.half{color:var(--gold-hi)}
+.draw-row .dk.paid{color:#c9bdf2}
+.draw-row .dk.five{color:#f0a35e}
+.draw-row .dt{color:var(--muted2);font-size:12px}
+.draw-row .dt-input{
+  width:92px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:8px;
+  color:var(--ink);padding:4px 6px;font-size:12.5px;font-family:inherit;outline:none;
+}
+.draw-row .dt-input:focus{border-color:var(--gold);box-shadow:0 0 0 2px rgba(231,185,105,.12)}
+.draw-row .del{
+  margin-left:auto;flex:none;width:28px;height:28px;border-radius:8px;border:none;background:transparent;
+  color:var(--muted2);cursor:pointer;font-size:13px;transition:.18s;font-family:inherit;
+}
+.draw-row .del:hover{color:var(--red);background:rgba(224,106,90,.1)}
+.draw-add{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.entry-row{display:flex;gap:8px;align-items:center;margin-bottom:10px;animation:rise .25s ease both}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex:none}
+.seg button{
+  padding:7px 11px;background:transparent;border:none;font-size:13px;cursor:pointer;
+  color:var(--muted);transition:.18s;font-family:inherit;white-space:nowrap;
+}
+.seg button:hover{color:var(--ink)}
+.seg button[data-type="core"].active{background:linear-gradient(135deg,#f7dfa5,#e2ab46);color:#3a2a10;font-weight:700}
+.seg button[data-type="normal"].active{background:var(--purple-bg);color:#d9cfff}
+.seg button.hot{animation:dotPulse 1.1s ease-in-out infinite;color:var(--gold-hi)}
+.entry-row .name{
+  flex:1;min-width:0;background:rgba(255,255,255,.05);border:1px solid var(--line);
+  color:var(--ink);border-radius:10px;padding:8px 11px;font-size:13.5px;outline:none;
+  transition:border-color .18s,box-shadow .18s;font-family:inherit;
+}
+.entry-row .name:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(231,185,105,.12)}
+.entry-row .name::placeholder{color:var(--muted2)}
+.entry-row .from{
+  flex:none;max-width:158px;background:rgba(255,255,255,.05);border:1px solid var(--line);
+  color:var(--muted);border-radius:10px;padding:9px 8px;font-size:12.5px;outline:none;
+  font-family:inherit;cursor:pointer;
+}
+.entry-row .from:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(231,185,105,.12)}
+.entry-row .from.hasref{color:var(--gold-hi);border-color:rgba(231,185,105,.45)}
+.entry-row .del{
+  flex:none;width:32px;height:32px;border-radius:9px;border:none;background:transparent;
+  color:var(--muted2);cursor:pointer;font-size:14px;transition:.18s;font-family:inherit;
+}
+.entry-row .del:hover{color:var(--red);background:rgba(224,106,90,.1)}
+.add-entry{width:100%;margin:2px 0 4px;border-style:dashed}
+textarea{
+  width:100%;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:12px;
+  color:var(--ink);padding:10px 12px;font-size:13.5px;outline:none;resize:vertical;
+  font-family:inherit;transition:border-color .18s,box-shadow .18s;min-height:56px;
+}
+textarea:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(231,185,105,.12)}
+textarea::placeholder{color:var(--muted2)}
+.modal-foot{display:flex;align-items:center;gap:10px;margin-top:20px}
+.spacer{flex:1}
+.setting-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.setting-row input{
+  width:110px;background:rgba(255,255,255,.05);border:1px solid var(--line);border-radius:10px;
+  color:var(--gold-hi);padding:9px 12px;font-size:17px;font-weight:700;outline:none;
+  font-family:inherit;text-align:center;
+}
+.setting-row input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(231,185,105,.12)}
+.muted{color:var(--muted);font-size:13px}
+#toast{
+  position:fixed;left:50%;bottom:30px;transform:translate(-50%,16px);z-index:90;
+  background:linear-gradient(180deg,#2a231a,#1c1712);border:1px solid var(--line-strong);
+  color:var(--gold-hi);padding:10px 22px;border-radius:999px;font-size:13.5px;
+  letter-spacing:.06em;opacity:0;pointer-events:none;transition:.3s;
+  box-shadow:0 14px 40px rgba(0,0,0,.5);
+}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+.core-flash{
+  position:fixed;inset:0;z-index:80;pointer-events:none;
+  background:radial-gradient(circle at 50% 52%, rgba(247,223,165,.4), rgba(231,185,95,.14) 34%, transparent 68%);
+  animation:flash .9s ease-out forwards;
+}
+@keyframes flash{0%{opacity:0;transform:scale(.55)}28%{opacity:1}100%{opacity:0;transform:scale(1.18)}}
+.ferrite-mark{
+  position:fixed;right:16px;bottom:12px;z-index:50;pointer-events:none;
+  font-family:KaiTi,"STKaiti","Noto Serif SC",serif;font-size:13px;letter-spacing:.3em;
+  color:rgba(231,185,105,.30);text-shadow:0 0 14px rgba(231,185,105,.18);
+}
+.guide-body{font-size:13.5px;color:var(--ink);line-height:1.85}
+.guide-body h4{font-family:KaiTi,"STKaiti",serif;color:var(--gold-hi);font-size:16px;margin:14px 0 6px;letter-spacing:.05em}
+.guide-body h4:first-child{margin-top:2px}
+.guide-body ul{margin:4px 0 4px 18px}
+.guide-body li{margin:2px 0}
+.guide-body b{color:var(--gold)}
+.guide-body .tip{color:var(--muted);font-size:12.5px}
+@media (max-width:680px){ .ferrite-mark{bottom:8px;right:10px;font-size:11px} }
+@media (max-width:1080px){
+  .dashboard{grid-template-columns:1fr 1fr}
+  .stats{grid-column:1 / -1;grid-template-columns:repeat(6,1fr)}
+  .stat{padding:12px 12px}
+}
+@media (max-width:900px){
+  .dashboard{grid-template-columns:1fr}
+  .stats{grid-template-columns:repeat(3,1fr)}
+  .pity{gap:16px;padding:18px}
+}
+@media (max-width:680px){
+  .app{padding:18px 10px 30px}
+  h1{font-size:23px}
+  .sub{display:none}
+  .entry-row{flex-wrap:wrap}
+  .entry-row .name{flex:1 1 calc(100% - 150px)}
+  .entry-row .from{flex:1;max-width:none}
+  .ring-wrap,.ring{width:108px;height:108px}
+  .ring-fg,.ring-bg{stroke-width:8}
+  #ringNum,#ringNum2{font-size:32px}
+  .pity-line{font-size:16px}
+  .stats{grid-template-columns:repeat(3,1fr);gap:8px}
+  .stat{padding:10px 8px}
+  .stat-num{font-size:20px}
+  .stat-label{font-size:10px}
+  .calendar-panel,.quick-panel,.history-panel{padding:14px 10px 16px}
+  .grid,.weekdays{gap:4px}
+  .cell{min-height:78px;padding:6px 5px;border-radius:10px}
+  .cell::after{display:none}
+  .dnum{width:21px;height:21px;font-size:12px;border-radius:6px}
+  .dload{font-size:9.5px}
+  .chip{font-size:10px;padding:1px 6px}
+  .modal{padding:0;align-items:flex-end}
+  .modal-card{max-height:88vh;border-radius:20px 20px 0 0;padding:18px 16px 26px;animation:sheet .26s cubic-bezier(.22,1.2,.36,1) both}
+  @keyframes sheet{from{opacity:0;transform:translateY(50px)}to{opacity:1;transform:none}}
+  .cal-title{min-width:0;font-size:18px}
+  .today-btn{padding:7px 10px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">战</div>
+      <div>
+        <h1>三战抽卡日历</h1>
+        <p class="sub">记录每一次抽卡与金光乍现 · 5+1 核心保底 + 30 抽保底</p>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btnGuide">使用说明</button>
+      <button class="btn" id="btnExport">导出备份</button>
+      <button class="btn" id="btnImport">导入备份</button>
+      <input type="file" id="fileImport" accept="application/json,.json" hidden>
+      <button class="btn" id="btnSettings">设置</button>
+    </div>
+  </header>
+
+  <section class="dashboard">
+    <div class="panel pity">
+      <div class="ring-wrap" id="ringWrap">
+        <svg class="ring" viewBox="0 0 142 142">
+          <defs>
+            <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#f7dfa5"/>
+              <stop offset="100%" stop-color="#d99a2b"/>
+            </linearGradient>
+            <linearGradient id="purpleGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#d9cfff"/>
+              <stop offset="100%" stop-color="#8d7fd0"/>
+            </linearGradient>
+          </defs>
+          <circle class="ring-bg" cx="71" cy="71" r="50"/>
+          <circle class="ring-fg" id="ringFg" cx="71" cy="71" r="50"/>
+        </svg>
+        <div class="ring-center">
+          <span id="ringNum">—</span>
+          <span id="ringUnit">张橙将</span>
+        </div>
+      </div>
+      <div class="pity-main">
+        <div class="pity-title" id="pityTitle">核心保底倒计时 · <b>5+1</b></div>
+        <div class="pity-line" id="pityMain">—</div>
+        <div class="pity-sub" id="pitySub">—</div>
+        <div class="dots" id="pityDots"></div>
+        <div class="last-core" id="lastCore">—</div>
+      </div>
+    </div>
+
+    <div class="panel pity draw-pity">
+      <div class="ring-wrap" id="ringWrap2">
+        <svg class="ring" viewBox="0 0 142 142">
+          <circle class="ring-bg" cx="71" cy="71" r="50"/>
+          <circle class="ring-fg" id="ringFg2" cx="71" cy="71" r="50"/>
+        </svg>
+        <div class="ring-center">
+          <span id="ringNum2">—</span>
+          <span id="ringUnit2">抽未出橙</span>
+        </div>
+      </div>
+      <div class="pity-main">
+        <div class="pity-title">日常 30 抽保底 · <b>必出橙</b></div>
+        <div class="pity-line" id="drawPityMain">—</div>
+        <div class="pity-sub" id="drawPitySub">—</div>
+        <div class="last-core" id="lastOrange">—</div>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="panel stat"><div class="stat-num" id="statTotalDraws">0</div><div class="stat-label">累计抽数</div></div>
+      <div class="panel stat"><div class="stat-num" id="statMonthDraws">0</div><div class="stat-label">当月抽数</div></div>
+      <div class="panel stat"><div class="stat-num" id="statMonthTotal">0</div><div class="stat-label">当月橙将</div></div>
+      <div class="panel stat"><div class="stat-num gold" id="statMonthCore">0</div><div class="stat-label">当月核心</div></div>
+      <div class="panel stat"><div class="stat-num gold" id="statTotalCore">0</div><div class="stat-label">累计核心</div></div>
+      <div class="panel stat"><div class="stat-num" id="statDays">0</div><div class="stat-label">记录天数</div></div>
+    </div>
+  </section>
+
+  <section class="panel quick-panel">
+    <div class="quick-head">
+      <span class="quick-title">今日抽卡</span>
+      <span class="quick-status" id="quickStatus">—</span>
+    </div>
+    <div class="quick-btns">
+      <label class="time-field" title="默认当前时间，可改为实际抽卡时间">记录时间
+        <input type="time" id="quickTime">
+      </label>
+      <button class="btn small" id="btnQuickNow">现在</button>
+      <button class="btn" id="btnDrawFree">免费单抽 +1</button>
+      <button class="btn" id="btnDrawHalf">半价单抽 +1</button>
+      <button class="btn" id="btnDrawPaid">付费单抽 +1</button>
+      <button class="btn primary" id="btnDrawFive">五连抽 +5</button>
+      <div class="spacer"></div>
+      <button class="btn" id="btnOpenToday">记录出橙 / 编辑今日</button>
+    </div>
+  </section>
+
+  <section class="panel calendar-panel">
+    <div class="cal-head">
+      <button class="nav-btn" id="btnPrev" title="上个月">‹</button>
+      <div class="cal-title" id="calTitle">—</div>
+      <button class="nav-btn" id="btnNext" title="下个月">›</button>
+      <button class="btn today-btn" id="btnToday">回到今天</button>
+    </div>
+    <div class="weekdays"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+    <div class="grid" id="calGrid"></div>
+  </section>
+
+  <section class="panel history-panel">
+    <div class="history-head">
+      <span class="history-title">出橙记录</span>
+      <span class="history-sub" id="historySub">—</span>
+    </div>
+    <div class="history-list" id="historyList"></div>
+  </section>
+
+  <footer>三战抽卡日历 <span style="color:var(--gold)">v2.1</span> · Designed by <b style="color:var(--gold);font-weight:600">Ferrite</b> · 数据保存在本机浏览器 · 清除浏览器数据会丢失记录 · 建议定期「导出备份」</footer>
+</div>
+
+<div class="ferrite-mark">✦ Ferrite</div>
+
+<div class="modal" id="guideModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>使用说明</h3>
+      <button class="icon-btn" data-close="guideModal" title="关闭">✕</button>
+    </div>
+    <div class="guide-body">
+      <h4>这是什么</h4>
+      <p>三国志战略版<b>日常抽卡记录器</b>：单文件网页，双击即用，无需安装、无需联网，数据仅保存在你的浏览器里。</p>
+      <h4>记录什么 · 怎么记</h4>
+      <ul>
+        <li><b>抽数</b>：每天用顶部「今日抽卡」快捷按钮记录——免费单抽 +1、半价单抽 +1、付费单抽 +1、五连抽 +5</li>
+        <li><b>记录时间可改</b>：快捷条有「记录时间」（默认现在，可改为实际抽卡时间，点「现在」一键回填）；弹窗里每一抽的时间也能单独修改</li>
+        <li><b>橙将</b>：点「记录出橙 / 编辑今日」，填武将名、选「普通 / 核心」</li>
+        <li><b>出自哪一抽</b>：每条橙将右侧「出自」可选它来自哪一次单抽，或五连的第几个——保底计数就能精确到抽次</li>
+        <li>点日历上任意日期，可以补记/修改那一天的抽卡、橙将与备注</li>
+      </ul>
+      <h4>两个保底怎么看</h4>
+      <ul>
+        <li><b>核心保底（5+1）</b>：连续 5 张普通橙后，下一张橙必为核心；金环显示还差几张</li>
+        <li><b>日常 30 抽保底</b>：距上次出橙的抽数累计到 30 必出橙；紫环显示 X/30，出橙自动重置</li>
+      </ul>
+      <h4>免费 / 半价节奏</h4>
+      <p>每 <b>11.5 小时</b>刷新一次免费单抽（附带一次半价），基本每天 4 抽：免费 ✅ 可抽 / ⏳ 未刷新，半价 ✅ 可抽 / ⏳ 已用，并显示下次免费刷新时间。</p>
+      <h4>数据与备份</h4>
+      <ul>
+        <li>数据保存在本机浏览器（localStorage）——<b>清除浏览器数据会丢失</b></li>
+        <li>换设备 / 换浏览器：先「导出备份」，再到新环境「导入备份」（旧版本备份同样可导入）</li>
+        <li>「设置」里可调整：核心保底张数、日常保底抽数、免费刷新间隔</li>
+      </ul>
+      <p class="tip">小建议：如果你同时抽多个卡池，建议只重点记录主卡池（各大卡包保底分开计算）。</p>
+    </div>
+    <div class="modal-foot">
+      <span class="muted">三战抽卡日历 · by Ferrite</span>
+      <div class="spacer"></div>
+      <button class="btn primary" data-close="guideModal">知道了</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="dayModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="dayTitle">—</h3>
+      <button class="icon-btn" data-close="dayModal" title="关闭">✕</button>
+    </div>
+    <p class="hint">先记当天抽卡次数（免费 / 半价 / 付费 / 五连），再把抽到的橙将记到下面：核心武将选「核心」，普通橙将选「普通」；右侧「出自」可选它来自哪一抽（五连可选第几个），30 抽保底就能精确到抽次。出橙即重置保底计数。</p>
+
+    <label class="field-label">当日抽卡记录（按实际点击记录，可删除）</label>
+    <div class="draw-list" id="drawList"></div>
+    <div class="draw-add">
+      <button class="btn small" data-addkind="free">+ 免费单抽</button>
+      <button class="btn small" data-addkind="half">+ 半价单抽</button>
+      <button class="btn small" data-addkind="paid">+ 付费单抽</button>
+      <button class="btn small" data-addkind="five">+ 五连抽（5 抽）</button>
+    </div>
+
+    <label class="field-label">当日出橙（核心 / 普通）</label>
+    <div id="dayEntries"></div>
+    <button class="btn add-entry" id="btnAddEntry">+ 添加武将</button>
+
+    <label class="field-label" for="dayNote">当日备注（可选）</label>
+    <textarea id="dayNote" rows="2" maxlength="120" placeholder="例如：半价招募 / 卡池：PK 赛季大卡包 / 这次 28 抽出橙"></textarea>
+    <div class="modal-foot">
+      <button class="btn danger" id="btnClearDay">清空当日</button>
+      <div class="spacer"></div>
+      <button class="btn" data-close="dayModal">取消</button>
+      <button class="btn primary" id="btnSaveDay">保存记录</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="settingsModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>设置</h3>
+      <button class="icon-btn" data-close="settingsModal" title="关闭">✕</button>
+    </div>
+    <label class="field-label" for="setPity">核心保底间隔（连续多少张橙将内必出核心）</label>
+    <div class="setting-row">
+      <input type="number" id="setPity" min="2" max="12" step="1">
+      <span class="muted">张橙将</span>
+    </div>
+    <label class="field-label" for="setDrawPity">日常抽卡保底（多少抽内必出橙将）</label>
+    <div class="setting-row">
+      <input type="number" id="setDrawPity" min="5" max="80" step="1">
+      <span class="muted">抽</span>
+    </div>
+    <label class="field-label" for="setFreeInterval">免费单抽刷新间隔</label>
+    <div class="setting-row">
+      <input type="number" id="setFreeInterval" min="1" max="72" step="0.5">
+      <span class="muted">小时（默认 11.5，即每天约 2 次免费 + 2 次半价）</span>
+    </div>
+    <p class="hint">三战通用规律为「5+1」：连续 5 张普通橙后，第 6 张橙将必为核心，因此默认填 6。核心保底按橙将张数计算，各大卡包 / 小卡包分开计数（本工具默认汇总统计，适合只重点记录一个卡池的玩法）。日常 30 抽保底按抽数计算，五连抽按 5 抽计入；若你的卡池实际保底不同，可在上面调整。</p>
+    <div class="modal-foot">
+      <button class="btn danger" id="btnWipe">清空全部数据</button>
+      <div class="spacer"></div>
+      <button class="btn" data-close="settingsModal">取消</button>
+      <button class="btn primary" id="btnSaveSettings">保存</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function(){
+  'use strict';
+  var KEY = 'sz_draw_cal_v2';
+  var LEGACY_KEY = 'sz_draw_cal_v1';
+  var BAK = KEY + '.bak';
+  var RING_C = 2 * Math.PI * 50;
+  var $ = function(s){ return document.querySelector(s); };
+  var today = new Date();
+  var todayStr = fmtDate(today);
+  var view = { y: today.getFullYear(), m: today.getMonth() };
+  var editingDate = null;
+  var modalDraws = [];
+  var toastTimer = null;
+
+  var grid = $('#calGrid');
+  var dayModal = $('#dayModal');
+  var settingsModal = $('#settingsModal');
+  var guideModal = $('#guideModal');
+  var dayEntries = $('#dayEntries');
+  var dayNote = $('#dayNote');
+  var drawListEl = $('#drawList');
+
+  var DRAW_KINDS = {
+    free: { label: '免费单抽', units: 1 },
+    half: { label: '半价单抽', units: 1 },
+    paid: { label: '付费单抽', units: 1 },
+    five: { label: '五连抽', units: 5 }
+  };
+
+  function pad2(n){ return String(n).padStart(2, '0'); }
+  function fmtDate(d){ return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
+  function parseDateStr(s){ var p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+  function clamp(n, min, max){ return Math.min(max, Math.max(min, n)); }
+  function nowTime(){ var n = new Date(); return pad2(n.getHours()) + ':' + pad2(n.getMinutes()); }
+  function defaultState(){
+    return { v: 2, settings: { corePity: 6, drawPity: 30, freeIntervalH: 11.5 }, days: {} };
+  }
+
+  function normalizeState(s){
+    s.v = 2;
+    s.settings = s.settings || {};
+    s.settings.corePity = clamp(parseInt(s.settings.corePity, 10) || 6, 2, 12);
+    s.settings.drawPity = clamp(parseInt(s.settings.drawPity, 10) || 30, 5, 80);
+    var fi = parseFloat(s.settings.freeIntervalH);
+    s.settings.freeIntervalH = (isFinite(fi) && fi >= 1) ? fi : 11.5;
+    Object.keys(s.days).forEach(function(ds){
+      var day = s.days[ds] || {};
+      day.entries = day.entries || [];
+      day.draws = day.draws || [];
+      day.note = day.note || '';
+      s.days[ds] = day;
+    });
+    return s;
+  }
+
+  function loadState(){
+    var keys = [KEY, BAK];
+    for (var i = 0; i < keys.length; i++) {
+      try {
+        var raw = localStorage.getItem(keys[i]);
+        if (!raw) continue;
+        var s = JSON.parse(raw);
+        if (s && typeof s === 'object' && s.days && typeof s.days === 'object') {
+          return normalizeState(s);
+        }
+      } catch (e) {}
+    }
+    try {
+      var legacy = localStorage.getItem(LEGACY_KEY);
+      if (legacy) {
+        var ls = JSON.parse(legacy);
+        if (ls && typeof ls === 'object' && ls.days && typeof ls.days === 'object') {
+          return normalizeState({
+            v: 2,
+            settings: { corePity: ls.settings && ls.settings.corePity, drawPity: 30, freeIntervalH: 11.5 },
+            days: ls.days
+          });
+        }
+      }
+    } catch (e2) {}
+    return defaultState();
+  }
+
+  var state = loadState();
+
+  function saveState(){
+    try {
+      var old = localStorage.getItem(KEY);
+      if (old) localStorage.setItem(BAK, old);
+      localStorage.setItem(KEY, JSON.stringify(state));
+    } catch (e) {
+      toast('保存失败：当前浏览器不支持本地存储');
+    }
+  }
+
+  function toast(msg){
+    var t = $('#toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.remove('show'); }, 2300);
+  }
+
+  function coreFlash(){
+    var el = document.createElement('div');
+    el.className = 'core-flash';
+    document.body.appendChild(el);
+    setTimeout(function(){ el.remove(); }, 950);
+  }
+
+  function daysSorted(){ return Object.keys(state.days).sort(); }
+
+  function drawUnits(d){ return (d && d.kind === 'five') ? 5 : 1; }
+
+  function dayDraws(day){
+    var n = 0;
+    ((day && day.draws) || []).forEach(function(d){ n += drawUnits(d); });
+    return n;
+  }
+
+  function entryList(){
+    var list = [];
+    daysSorted().forEach(function(ds){
+      var day = state.days[ds] || {};
+      (day.entries || []).forEach(function(e){ list.push({ date: ds, name: e.name || '未命名', type: e.type }); });
+    });
+    return list;
+  }
+
+  function computePity(){
+    var n = 0;
+    var lastCore = null;
+    var total = 0;
+    var cores = 0;
+    var normals = 0;
+    daysSorted().forEach(function(ds){
+      var entries = (state.days[ds] || {}).entries || [];
+      entries.forEach(function(e){
+        total++;
+        if (e.type === 'core') {
+          cores++;
+          n = 0;
+          lastCore = { name: e.name || '核心武将', date: ds };
+        } else {
+          normals++;
+          n++;
+        }
+      });
+    });
+    var interval = state.settings.corePity;
+    return {
+      normalsSinceCore: n,
+      interval: interval,
+      remain: Math.max(interval - n, 0),
+      lastCore: lastCore,
+      total: total,
+      cores: cores,
+      normals: normals
+    };
+  }
+
+  function computeDrawPity(){
+    var pity = 0;
+    var totalDraws = 0;
+    var history = [];
+    var lastOrange = null;
+    daysSorted().forEach(function(ds){
+      var day = state.days[ds] || {};
+      var draws = day.draws || [];
+      var entries = day.entries || [];
+      var byRef = {};
+      var unlabeled = [];
+      entries.forEach(function(e){
+        if (typeof e.drawIndex === 'number' && e.drawIndex >= 0 && e.drawIndex < draws.length) {
+          var key = e.drawIndex + ':' + (e.sub || 0);
+          (byRef[key] = byRef[key] || []).push(e);
+        } else {
+          unlabeled.push(e);
+        }
+      });
+      draws.forEach(function(d, i){
+        var units = drawUnits(d);
+        for (var k = 1; k <= units; k++) {
+          pity += 1;
+          totalDraws += 1;
+          var sub = units > 1 ? k : 0;
+          var hits = byRef[i + ':' + sub];
+          if (hits) {
+            hits.forEach(function(e){
+              history.push({
+                date: ds,
+                name: e.name || '未命名',
+                type: e.type,
+                pity: pity,
+                ref: { kind: d.kind, sub: sub, time: d.time }
+              });
+              lastOrange = { name: e.name || '橙将', date: ds };
+              pity = 0;
+            });
+          }
+        }
+      });
+      if (unlabeled.length) {
+        unlabeled.forEach(function(e){
+          history.push({
+            date: ds,
+            name: e.name || '未命名',
+            type: e.type,
+            pity: pity,
+            ref: null
+          });
+          lastOrange = { name: e.name || '橙将', date: ds };
+          pity = 0;
+        });
+      }
+    });
+    var cap = state.settings.drawPity;
+    return {
+      pity: pity,
+      cap: cap,
+      remain: Math.max(cap - pity, 0),
+      totalDraws: totalDraws,
+      history: history,
+      lastOrange: lastOrange
+    };
+  }
+
+  function freeStatus(){
+    var frees = 0;
+    var halves = 0;
+    var lastFreeTs = null;
+    daysSorted().forEach(function(ds){
+      ((state.days[ds] || {}).draws || []).forEach(function(d){
+        if (d.kind === 'free') {
+          frees++;
+          var ts = Date.parse(ds + 'T' + (d.time || '00:00') + ':00');
+          if (!isNaN(ts)) lastFreeTs = Math.max(lastFreeTs === null ? 0 : lastFreeTs, ts);
+        } else if (d.kind === 'half') {
+          halves++;
+        }
+      });
+    });
+    var intervalMs = state.settings.freeIntervalH * 3600 * 1000;
+    var now = Date.now();
+    var freeReady = (lastFreeTs === null) || ((now - lastFreeTs) >= intervalMs);
+    var nextFreeTs = lastFreeTs === null ? null : (lastFreeTs + intervalMs);
+    var halfReady = (halves < frees) || freeReady;
+    return {
+      frees: frees, halves: halves,
+      freeReady: freeReady, halfReady: halfReady,
+      nextFreeTs: nextFreeTs
+    };
+  }
+
+  function fmtTs(ts){
+    var d = new Date(ts);
+    var sameDay = fmtDate(d) === fmtDate(new Date());
+    return (sameDay ? '今天 ' : pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ') + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  }
+
+  function renderPity(){
+    var p = computePity();
+    var n = p.normalsSinceCore;
+    var interval = p.interval;
+    var remain = p.remain;
+    var ready = p.total > 0 && n >= interval - 1;
+
+    $('#pityTitle').innerHTML = interval === 6 ? '核心保底倒计时 · <b>5+1</b>' : '核心保底倒计时';
+
+    var progress = interval > 1 ? Math.min(n / (interval - 1), 1) : 1;
+    var ringFg = $('#ringFg');
+    ringFg.style.strokeDasharray = RING_C;
+    ringFg.style.strokeDashoffset = String(RING_C * (1 - progress));
+    $('#ringWrap').classList.toggle('ready', ready);
+
+    var ringNum = $('#ringNum');
+    var ringUnit = $('#ringUnit');
+    if (p.total === 0) {
+      ringNum.textContent = '—';
+      ringUnit.textContent = '暂无记录';
+    } else {
+      ringNum.textContent = String(remain);
+      ringUnit.textContent = '张橙将';
+    }
+
+    var main = $('#pityMain');
+    var sub = $('#pitySub');
+    main.classList.toggle('ready', ready);
+    if (p.total === 0) {
+      main.textContent = '还没有橙将记录';
+      sub.textContent = '点击日历中的任意日期，记下今天抽到的橙将吧';
+    } else if (ready) {
+      main.textContent = '下一张橙卡必为核心！';
+      sub.textContent = '已连续 ' + n + ' 张普通橙，5+1 保底即将触发';
+    } else if (n === 0) {
+      main.textContent = '最多 ' + remain + ' 张橙将内必出核心';
+      sub.textContent = '刚获核心，新的保底周期已开始';
+    } else {
+      main.textContent = '距核心保底还需 ' + remain + ' 张橙将';
+      sub.textContent = '自上次核心后，已累计 ' + n + ' 张普通橙';
+    }
+
+    var dotsEl = $('#pityDots');
+    dotsEl.innerHTML = '';
+    var normalSlots = Math.max(interval - 1, 1);
+    for (var i = 0; i < normalSlots; i++) {
+      var d = document.createElement('span');
+      d.className = 'dot' + (i < n ? ' filled' : '');
+      dotsEl.appendChild(d);
+    }
+    var g = document.createElement('span');
+    g.className = 'dot guarantee' + (n >= interval - 1 ? ' ready' : '');
+    dotsEl.appendChild(g);
+
+    var lc = $('#lastCore');
+    lc.innerHTML = '';
+    if (p.lastCore) {
+      var d2 = parseDateStr(p.lastCore.date);
+      lc.appendChild(document.createTextNode('上次核心：'));
+      var b = document.createElement('b');
+      b.textContent = p.lastCore.name;
+      lc.appendChild(b);
+      lc.appendChild(document.createTextNode(' · ' + d2.getFullYear() + '年' + (d2.getMonth() + 1) + '月' + d2.getDate() + '日'));
+    } else {
+      lc.textContent = '上次核心：暂无记录';
+    }
+  }
+
+  function renderDrawPity(){
+    var p = computeDrawPity();
+    var ready = p.totalDraws > 0 && p.pity >= p.cap - 1;
+
+    var progress = p.cap > 0 ? Math.min(p.pity / p.cap, 1) : 0;
+    var ringFg = $('#ringFg2');
+    ringFg.style.strokeDasharray = RING_C;
+    ringFg.style.strokeDashoffset = String(RING_C * (1 - progress));
+    $('#ringWrap2').classList.toggle('ready', ready);
+
+    var ringNum = $('#ringNum2');
+    var ringUnit = $('#ringUnit2');
+    if (p.totalDraws === 0) {
+      ringNum.textContent = '—';
+      ringUnit.textContent = '未记录抽数';
+    } else {
+      ringNum.textContent = String(p.pity);
+      ringUnit.textContent = '/ ' + p.cap + ' 抽';
+    }
+
+    var main = $('#drawPityMain');
+    var sub = $('#drawPitySub');
+    main.classList.toggle('ready', ready);
+    if (p.totalDraws === 0) {
+      main.textContent = '还没有抽数记录';
+      sub.textContent = '用上方「今日抽卡」快捷按钮记录每天的抽卡次数';
+    } else if (ready) {
+      main.textContent = '这一抽必出橙将！';
+      sub.textContent = '已累计 ' + p.pity + ' 抽未出橙（保底 ' + p.cap + ' 抽）';
+    } else if (p.pity === 0) {
+      main.textContent = '距 30 抽保底还有 ' + p.remain + ' 抽';
+      sub.textContent = '刚出橙将，保底计数已重置';
+    } else {
+      main.textContent = '距 30 抽保底还有 ' + p.remain + ' 抽';
+      sub.textContent = '上次出橙后已累计 ' + p.pity + ' 抽未出橙';
+    }
+
+    var lo = $('#lastOrange');
+    lo.innerHTML = '';
+    if (p.lastOrange) {
+      var d2 = parseDateStr(p.lastOrange.date);
+      lo.appendChild(document.createTextNode('上次出橙：'));
+      var b = document.createElement('b');
+      b.textContent = p.lastOrange.name;
+      lo.appendChild(b);
+      lo.appendChild(document.createTextNode(' · ' + d2.getFullYear() + '年' + (d2.getMonth() + 1) + '月' + d2.getDate() + '日'));
+    } else {
+      lo.textContent = '上次出橙：暂无记录';
+    }
+  }
+
+  function renderStats(){
+    var oranges = 0;
+    var cores = 0;
+    var monthDraws = 0;
+    Object.keys(state.days).forEach(function(ds){
+      var p = ds.split('-').map(Number);
+      if (p[0] === view.y && p[1] === view.m + 1) {
+        var day = state.days[ds] || {};
+        monthDraws += dayDraws(day);
+        ((day.entries) || []).forEach(function(e){
+          oranges++;
+          if (e.type === 'core') cores++;
+        });
+      }
+    });
+    var all = computePity();
+    var drawAll = computeDrawPity();
+    $('#statTotalDraws').textContent = String(drawAll.totalDraws);
+    $('#statMonthDraws').textContent = String(monthDraws);
+    $('#statMonthTotal').textContent = String(oranges);
+    $('#statMonthCore').textContent = String(cores);
+    $('#statTotalCore').textContent = String(all.cores);
+    $('#statDays').textContent = String(Object.keys(state.days).length);
+  }
+
+  function renderQuick(){
+    var st = freeStatus();
+    var todayDrawN = dayDraws(state.days[todayStr]);
+    var parts = [];
+    parts.push('今日已抽 <b>' + todayDrawN + '</b> 抽');
+    parts.push('免费：' + (st.freeReady ? '<span class="ok">✅ 可抽</span>' : '<span class="wait">⏳ 未刷新</span>'));
+    parts.push('半价：' + (st.halfReady ? '<span class="ok">✅ 可抽</span>' : '<span class="wait">⏳ 已用</span>'));
+    if (!st.freeReady && st.nextFreeTs) {
+      parts.push('下次免费刷新 <b>' + fmtTs(st.nextFreeTs) + '</b>');
+    }
+    $('#quickStatus').innerHTML = parts.join(' · ');
+  }
+
+  function makeChip(e){
+    var c = document.createElement('span');
+    var isCore = e.type === 'core';
+    c.className = 'chip ' + (isCore ? 'core' : 'normal');
+    c.textContent = (isCore ? '★ ' : '') + (e.name || '未命名');
+    c.title = c.textContent;
+    return c;
+  }
+
+  function renderCalendar(){
+    $('#calTitle').textContent = view.y + ' 年 ' + (view.m + 1) + ' 月';
+    grid.innerHTML = '';
+
+    var first = new Date(view.y, view.m, 1);
+    var offset = (first.getDay() + 6) % 7;
+    var dim = new Date(view.y, view.m + 1, 0).getDate();
+    var rows = Math.ceil((offset + dim) / 7);
+    var start = new Date(view.y, view.m, 1 - offset);
+    var isMobile = window.matchMedia('(max-width:680px)').matches;
+    var maxShow = isMobile ? 1 : 3;
+
+    for (var i = 0; i < rows * 7; i++) {
+      var d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+      var ds = fmtDate(d);
+      var cell = document.createElement('div');
+      cell.className = 'cell';
+      if (d.getMonth() !== view.m) cell.classList.add('other');
+      if (ds === todayStr) cell.classList.add('today');
+
+      var day = state.days[ds];
+      var entries = (day && day.entries) || [];
+      var drawsN = dayDraws(day);
+      var hasCore = entries.some(function(e){ return e.type === 'core'; });
+
+      var top = document.createElement('div');
+      top.className = 'cell-top';
+      var dn = document.createElement('span');
+      dn.className = 'dnum';
+      dn.textContent = String(d.getDate());
+      top.appendChild(dn);
+      if (drawsN > 0) {
+        var dl = document.createElement('span');
+        dl.className = 'dload';
+        dl.textContent = drawsN + ' 抽';
+        top.appendChild(dl);
+      }
+      if (hasCore) {
+        var cb = document.createElement('span');
+        cb.className = 'core-badge';
+        cb.textContent = '★';
+        top.appendChild(cb);
+      }
+      if (day && day.note) {
+        var nb = document.createElement('span');
+        nb.className = 'note-badge';
+        nb.title = day.note;
+        top.appendChild(nb);
+      }
+      cell.appendChild(top);
+
+      var chips = document.createElement('div');
+      chips.className = 'chips';
+      entries.slice(0, maxShow).forEach(function(e){ chips.appendChild(makeChip(e)); });
+      if (entries.length > maxShow) {
+        var more = document.createElement('span');
+        more.className = 'more';
+        more.textContent = '+' + (entries.length - maxShow);
+        chips.appendChild(more);
+      }
+      cell.appendChild(chips);
+
+      cell.addEventListener('click', function(ds2){
+        return function(){ openDay(ds2); };
+      }(ds));
+      grid.appendChild(cell);
+    }
+
+    grid.classList.remove('anim');
+    void grid.offsetWidth;
+    grid.classList.add('anim');
+  }
+
+  function renderHistory(){
+    var p = computeDrawPity();
+    var listEl = $('#historyList');
+    listEl.innerHTML = '';
+    if (!p.history.length) {
+      var empty = document.createElement('div');
+      empty.className = 'draw-empty';
+      empty.textContent = '暂无出橙记录 —— 记录抽卡与橙将后，这里会显示每次出橙用了多少抽。';
+      listEl.appendChild(empty);
+      $('#historySub').textContent = '30 抽保底 · 出橙即重置计数';
+      return;
+    }
+    var recent = p.history.slice(-40).reverse();
+    var pits = p.history.map(function(h){ return h.pity; });
+    var avg = pits.reduce(function(a, b){ return a + b; }, 0) / pits.length;
+    var mx = Math.max.apply(null, pits);
+    $('#historySub').textContent = '共 ' + p.history.length + ' 次出橙 · 平均间隔 ' + avg.toFixed(1) + ' 抽 · 最长 ' + mx + ' 抽（保底 ' + p.cap + '）';
+    recent.forEach(function(h){
+      var row = document.createElement('div');
+      row.className = 'hrow';
+      var d = parseDateStr(h.date);
+      var dspan = document.createElement('span');
+      dspan.className = 'hdate';
+      dspan.textContent = d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+      row.appendChild(dspan);
+      var nspan = document.createElement('span');
+      nspan.className = 'hname' + (h.type === 'core' ? ' core' : '');
+      nspan.textContent = h.name;
+      row.appendChild(nspan);
+      if (h.type === 'core') {
+        var cspan = document.createElement('span');
+        cspan.className = 'hcore';
+        cspan.textContent = '核心';
+        row.appendChild(cspan);
+      }
+      var pspan = document.createElement('span');
+      pspan.className = 'hpity';
+      var refLabel = '';
+      if (h.ref) {
+        if (h.ref.sub > 0) {
+          refLabel = (DRAW_KINDS[h.ref.kind] || {}).label + '第 ' + h.ref.sub + ' 个';
+        } else {
+          refLabel = (DRAW_KINDS[h.ref.kind] || {}).label + (h.ref.time ? ' ' + h.ref.time : '');
+        }
+      }
+      pspan.innerHTML = (h.pity > 0 ? ('距上次橙 <b>' + h.pity + '</b> 抽') : '首次记录')
+        + (refLabel ? ' · 出自 ' + refLabel : '');
+      row.appendChild(pspan);
+      listEl.appendChild(row);
+    });
+  }
+
+  function renderAll(){
+    renderPity();
+    renderDrawPity();
+    renderStats();
+    renderQuick();
+    renderCalendar();
+    renderHistory();
+  }
+
+  function addDrawToDay(kind){
+    var day = state.days[todayStr];
+    if (!day) {
+      day = { entries: [], draws: [], note: '' };
+      state.days[todayStr] = day;
+    }
+    day.draws = day.draws || [];
+    var timeInput = $('#quickTime');
+    var time = (timeInput && timeInput.value) ? timeInput.value : nowTime();
+    day.draws.push({ kind: kind, time: time });
+    saveState();
+    renderAll();
+    toast(DRAW_KINDS[kind].label + '已记录 ' + time + '（今日 ' + dayDraws(day) + ' 抽）');
+  }
+
+  function renderModalDraws(){
+    drawListEl.innerHTML = '';
+    if (!modalDraws.length) {
+      var empty = document.createElement('div');
+      empty.className = 'draw-empty';
+      empty.textContent = '暂无抽卡记录，点下方按钮添加';
+      drawListEl.appendChild(empty);
+      refreshFromOptions();
+      return;
+    }
+    modalDraws.forEach(function(d, idx){
+      var row = document.createElement('div');
+      row.className = 'draw-row';
+      var k = DRAW_KINDS[d.kind] || DRAW_KINDS.paid;
+      var ks = document.createElement('span');
+      ks.className = 'dk ' + (DRAW_KINDS[d.kind] ? d.kind : 'paid');
+      ks.textContent = k.label + (k.units > 1 ? '（' + k.units + ' 抽）' : '');
+      row.appendChild(ks);
+      var ts = document.createElement('input');
+      ts.type = 'time';
+      ts.className = 'dt-input';
+      ts.value = d.time || nowTime();
+      d.time = ts.value;
+      ts.title = '可修改为实际抽卡时间';
+      ts.addEventListener('change', function(){
+        modalDraws[idx].time = ts.value || nowTime();
+      });
+      row.appendChild(ts);
+      var del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'del';
+      del.textContent = '✕';
+      del.title = '移除';
+      del.addEventListener('click', function(){
+        modalDraws.splice(idx, 1);
+        renderModalDraws();
+      });
+      row.appendChild(del);
+      drawListEl.appendChild(row);
+    });
+    refreshFromOptions();
+  }
+
+  function fromOptionsHTML(){
+    var out = ['<option value="">出自：未标注</option>'];
+    modalDraws.forEach(function(d, i){
+      var k = DRAW_KINDS[d.kind] || DRAW_KINDS.paid;
+      if (k.units > 1) {
+        var marks = ['①', '②', '③', '④', '⑤'];
+        for (var s = 1; s <= k.units; s++) {
+          out.push(
+            '<option value="' + i + '-' + s + '">' + k.label + ' ' + marks[s - 1] + (d.time ? ' · ' + d.time : '') + '</option>'
+          );
+        }
+      } else {
+        out.push(
+          '<option value="' + i + '-0">' + k.label + (d.time ? ' · ' + d.time : '') + '</option>'
+        );
+      }
+    });
+    return out.join('');
+  }
+
+  function refreshFromOptions(){
+    dayEntries.querySelectorAll('.entry-row').forEach(function(row){
+      var sel = row.querySelector('.from');
+      if (!sel) return;
+      var prev = sel.value;
+      sel.innerHTML = fromOptionsHTML();
+      if (prev && sel.querySelector('option[value="' + prev + '"]')) {
+        sel.value = prev;
+      } else {
+        sel.value = '';
+      }
+      sel.classList.toggle('hasref', !!sel.value);
+    });
+  }
+
+  function addEntryRow(type, name, ref){
+    type = type === 'core' ? 'core' : 'normal';
+    var row = document.createElement('div');
+    row.className = 'entry-row';
+    row.dataset.type = type;
+    row.innerHTML =
+      '<div class="seg">' +
+        '<button type="button" data-type="normal"' + (type === 'normal' ? ' class="active"' : '') + '>普通</button>' +
+        '<button type="button" data-type="core"' + (type === 'core' ? ' class="active"' : '') + '>核心</button>' +
+      '</div>' +
+      '<input class="name" maxlength="24" placeholder="输入武将名称，如 SP关羽">' +
+      '<select class="from" title="这张橙将出自哪一抽（五连可选第几个）"></select>' +
+      '<button type="button" class="del" title="移除">✕</button>';
+    row.querySelector('input').value = name || '';
+    var sel = row.querySelector('.from');
+    sel.innerHTML = fromOptionsHTML();
+    if (ref && typeof ref.drawIndex === 'number' && ref.drawIndex >= 0) {
+      var value = ref.drawIndex + '-' + (ref.sub || 0);
+      if (sel.querySelector('option[value="' + value + '"]')) {
+        sel.value = value;
+      }
+    }
+    sel.classList.toggle('hasref', !!sel.value);
+    sel.addEventListener('change', function(){
+      sel.classList.toggle('hasref', !!sel.value);
+    });
+    var segBtns = row.querySelectorAll('.seg button');
+    segBtns.forEach(function(b){
+      b.addEventListener('click', function(){
+        row.dataset.type = b.dataset.type;
+        segBtns.forEach(function(x){ x.classList.toggle('active', x === b); });
+      });
+    });
+    row.querySelector('.del').addEventListener('click', function(){
+      row.remove();
+      if (!dayEntries.querySelector('.entry-row')) addEntryRow('normal', '');
+    });
+    row.querySelector('input').addEventListener('keydown', function(ev){
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        addEntryRow('normal', '');
+        var rows = dayEntries.querySelectorAll('.entry-row');
+        rows[rows.length - 1].querySelector('input').focus();
+      }
+    });
+    dayEntries.appendChild(row);
+    return row;
+  }
+
+  function openDay(ds){
+    editingDate = ds;
+    var d = parseDateStr(ds);
+    var week = ['日', '一', '二', '三', '四', '五', '六'][d.getDay()];
+    $('#dayTitle').textContent = d.getFullYear() + ' 年 ' + (d.getMonth() + 1) + ' 月 ' + d.getDate() + ' 日 · 周' + week;
+
+    var day = state.days[ds];
+    modalDraws = ((day && day.draws) || []).map(function(x){
+      return { kind: x.kind, time: x.time };
+    });
+    renderModalDraws();
+
+    dayEntries.innerHTML = '';
+    var entries = (day && day.entries) || [];
+    entries.forEach(function(e){
+      addEntryRow(e.type, e.name, { drawIndex: e.drawIndex, sub: e.sub });
+    });
+    if (entries.length === 0) {
+      var p = computePity();
+      var ready = p.total > 0 && p.normalsSinceCore >= p.interval - 1;
+      var fresh = addEntryRow(ready ? 'core' : 'normal', '');
+      if (ready) {
+        var btn = fresh.querySelector('.seg button[data-type="core"]');
+        if (btn) btn.classList.add('hot');
+      }
+    }
+    dayNote.value = (day && day.note) || '';
+    dayModal.classList.add('open');
+    setTimeout(function(){
+      var inp = dayEntries.querySelector('input');
+      if (inp) inp.focus();
+    }, 60);
+  }
+
+  function closeModal(m){ m.classList.remove('open'); }
+
+  function saveDay(){
+    if (!editingDate) return;
+    var oldDay = state.days[editingDate];
+    var oldCoreCount = ((oldDay && oldDay.entries) || []).filter(function(e){ return e.type === 'core'; }).length;
+
+    var rows = Array.prototype.slice.call(dayEntries.querySelectorAll('.entry-row'));
+    var entries = [];
+    rows.forEach(function(r){
+      var name = r.querySelector('input').value.trim();
+      if (!name) return;
+      var sel = r.querySelector('.from');
+      var drawIndex = null;
+      var sub = 0;
+      if (sel && sel.value) {
+        var parts = sel.value.split('-');
+        var idx = parseInt(parts[0], 10);
+        if (!isNaN(idx) && idx >= 0 && idx < modalDraws.length) {
+          drawIndex = idx;
+          sub = parseInt(parts[1], 10) || 0;
+        }
+      }
+      entries.push({
+        name: name,
+        type: r.dataset.type === 'core' ? 'core' : 'normal',
+        drawIndex: drawIndex,
+        sub: sub
+      });
+    });
+    var note = dayNote.value.trim();
+    var draws = modalDraws.map(function(d){ return { kind: d.kind, time: d.time || '' }; });
+    var drawInputs = Array.prototype.slice.call(drawListEl.querySelectorAll('.draw-row .dt-input'));
+    drawInputs.forEach(function(inp, i){
+      if (draws[i]) draws[i].time = inp.value || draws[i].time || '';
+    });
+    if (entries.length === 0 && !note && draws.length === 0) {
+      delete state.days[editingDate];
+    } else {
+      state.days[editingDate] = { entries: entries, draws: draws, note: note };
+    }
+    saveState();
+    closeModal(dayModal);
+    renderAll();
+
+    var newCoreCount = entries.filter(function(e){ return e.type === 'core'; }).length;
+    if (newCoreCount > oldCoreCount) {
+      coreFlash();
+      toast('金光乍现！核心武将已入账 ★');
+    } else {
+      toast('已保存');
+    }
+  }
+
+  function exportData(){
+    var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '三战抽卡日历_备份_' + todayStr.replace(/-/g, '') + '.json';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+    toast('已导出备份文件');
+  }
+
+  function importData(file){
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(){
+      try {
+        var data = JSON.parse(reader.result);
+        if (!data || typeof data !== 'object' || !data.days || typeof data.days !== 'object') throw new Error('bad');
+        if (!confirm('导入将覆盖当前所有记录，确定继续吗？')) return;
+        state = normalizeState({
+          v: 2,
+          settings: data.settings || {},
+          days: data.days
+        });
+        saveState();
+        renderAll();
+        toast('导入成功');
+      } catch (e) {
+        alert('导入失败：文件格式不正确');
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function debounce(fn, wait){
+    var t = null;
+    return function(){
+      clearTimeout(t);
+      t = setTimeout(fn, wait);
+    };
+  }
+
+  $('#btnPrev').addEventListener('click', function(){
+    view.m--;
+    if (view.m < 0) { view.m = 11; view.y--; }
+    renderAll();
+  });
+  $('#btnNext').addEventListener('click', function(){
+    view.m++;
+    if (view.m > 11) { view.m = 0; view.y++; }
+    renderAll();
+  });
+  $('#btnToday').addEventListener('click', function(){
+    today = new Date();
+    todayStr = fmtDate(today);
+    view.y = today.getFullYear();
+    view.m = today.getMonth();
+    renderAll();
+  });
+
+  $('#btnDrawFree').addEventListener('click', function(){ addDrawToDay('free'); });
+  $('#btnDrawHalf').addEventListener('click', function(){ addDrawToDay('half'); });
+  $('#btnDrawPaid').addEventListener('click', function(){ addDrawToDay('paid'); });
+  $('#btnDrawFive').addEventListener('click', function(){ addDrawToDay('five'); });
+  $('#btnQuickNow').addEventListener('click', function(){ $('#quickTime').value = nowTime(); });
+  $('#btnOpenToday').addEventListener('click', function(){ openDay(todayStr); });
+
+  document.querySelectorAll('[data-addkind]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      modalDraws.push({ kind: btn.dataset.addkind, time: nowTime() });
+      renderModalDraws();
+    });
+  });
+
+  $('#btnAddEntry').addEventListener('click', function(){
+    var row = addEntryRow('normal', '');
+    row.querySelector('input').focus();
+  });
+  $('#btnSaveDay').addEventListener('click', saveDay);
+  $('#btnClearDay').addEventListener('click', function(){
+    if (!confirm('清空这一天的所有记录？')) return;
+    dayEntries.innerHTML = '';
+    addEntryRow('normal', '');
+    modalDraws = [];
+    renderModalDraws();
+    dayNote.value = '';
+  });
+
+  $('#btnGuide').addEventListener('click', function(){ guideModal.classList.add('open'); });
+  $('#btnExport').addEventListener('click', exportData);
+  $('#btnImport').addEventListener('click', function(){ $('#fileImport').click(); });
+  $('#fileImport').addEventListener('change', function(e){
+    importData(e.target.files[0]);
+    e.target.value = '';
+  });
+
+  $('#btnSettings').addEventListener('click', function(){
+    $('#setPity').value = state.settings.corePity;
+    $('#setDrawPity').value = state.settings.drawPity;
+    $('#setFreeInterval').value = state.settings.freeIntervalH;
+    settingsModal.classList.add('open');
+  });
+  $('#btnSaveSettings').addEventListener('click', function(){
+    var v = parseInt($('#setPity').value, 10);
+    if (!v || v < 2 || v > 12) {
+      alert('核心保底请输入 2 到 12 之间的整数');
+      return;
+    }
+    var dp = parseInt($('#setDrawPity').value, 10);
+    if (!dp || dp < 5 || dp > 80) {
+      alert('日常抽卡保底请输入 5 到 80 之间的整数');
+      return;
+    }
+    var fi = parseFloat($('#setFreeInterval').value);
+    if (!isFinite(fi) || fi < 1 || fi > 72) {
+      alert('免费刷新间隔请输入 1 到 72 之间的小时数');
+      return;
+    }
+    state.settings.corePity = v;
+    state.settings.drawPity = dp;
+    state.settings.freeIntervalH = fi;
+    saveState();
+    closeModal(settingsModal);
+    renderAll();
+    toast('设置已保存');
+  });
+  $('#btnWipe').addEventListener('click', function(){
+    if (!confirm('确定要清空全部抽卡记录吗？此操作不可恢复！')) return;
+    if (!confirm('再确认一次：所有记录将被删除！')) return;
+    try {
+      localStorage.removeItem(KEY);
+      localStorage.removeItem(BAK);
+    } catch (e) {}
+    state = defaultState();
+    renderAll();
+    closeModal(settingsModal);
+    toast('已清空全部数据');
+  });
+
+  document.querySelectorAll('[data-close]').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      closeModal(document.getElementById(btn.dataset.close));
+    });
+  });
+  [dayModal, settingsModal, guideModal].forEach(function(m){
+    m.addEventListener('click', function(e){
+      if (e.target === m) closeModal(m);
+    });
+  });
+  document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') {
+      if (dayModal.classList.contains('open')) closeModal(dayModal);
+      else if (settingsModal.classList.contains('open')) closeModal(settingsModal);
+      else if (guideModal.classList.contains('open')) closeModal(guideModal);
+    }
+  });
+
+  window.addEventListener('resize', debounce(renderCalendar, 150));
+  window.addEventListener('storage', function(e){
+    if (e.key === KEY) {
+      state = loadState();
+      renderAll();
+    }
+  });
+
+  $('#quickTime').value = nowTime();
+  renderAll();
+})();
+</script>
+</body>
+</html>
