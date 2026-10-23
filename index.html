@@ -127,7 +127,12 @@ h1{
   text-shadow:0 0 20px rgba(160,145,230,.55);
 }
 @keyframes textGlow{0%,100%{opacity:1}50%{opacity:.72}}
-.pity-sub{color:var(--muted);font-size:12.5px;margin-top:5px}
+  .pity-sub{color:var(--muted);font-size:12.5px;margin-top:5px}
+  .chance{margin-top:9px;display:flex;align-items:center;gap:10px}
+  .chance-bar{flex:1;height:6px;border-radius:3px;background:rgba(160,145,230,.16);overflow:hidden}
+  .chance-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#8c7bd8,#d9cfff);transition:width .45s ease}
+  .chance-text{font-size:12px;color:var(--muted);white-space:nowrap}
+  .chance-text b{color:#e8c887;font-size:14.5px}
 .dots{display:flex;gap:7px;margin:11px 0 9px}
 .dot{width:13px;height:13px;border-radius:50%;border:1px solid rgba(231,185,105,.4);background:transparent;transition:.3s}
 .dot.filled{background:linear-gradient(135deg,#c6b6f5,#8d7fd0);border-color:transparent;box-shadow:0 0 9px rgba(160,145,230,.45)}
@@ -471,6 +476,10 @@ textarea::placeholder{color:var(--muted2)}
         <div class="pity-title">日常 30 抽保底 · <b>必出橙</b></div>
         <div class="pity-line" id="drawPityMain">—</div>
         <div class="pity-sub" id="drawPitySub">—</div>
+        <div class="chance">
+          <div class="chance-bar"><div class="chance-fill" id="chanceFill"></div></div>
+          <div class="chance-text" id="drawChanceText">—</div>
+        </div>
         <div class="last-core" id="lastOrange">—</div>
       </div>
     </div>
@@ -962,6 +971,14 @@ textarea::placeholder{color:var(--muted2)}
     }
   }
 
+  function orangeChance(pity, cap){
+    var base = 0.056;
+    if (!cap || cap <= 1) return 1;
+    if (pity >= cap - 1) return 1;
+    var t = Math.max(0, Math.min(1, pity / (cap - 1)));
+    return Math.min(1, base + (1 - base) * Math.pow(t, 3));
+  }
+
   function renderDrawPity(){
     var p = computeDrawPity();
     var ready = p.totalDraws > 0 && p.pity >= p.cap - 1;
@@ -997,6 +1014,20 @@ textarea::placeholder{color:var(--muted2)}
     } else {
       main.textContent = '距 30 抽保底还有 ' + p.remain + ' 抽';
       sub.textContent = '上次出橙后已累计 ' + p.pity + ' 抽未出橙';
+    }
+
+    var chanceText = $('#drawChanceText');
+    var chanceFill = $('#chanceFill');
+    if (chanceText && chanceFill) {
+      if (p.totalDraws === 0) {
+        chanceText.textContent = '下一抽出橙估算 —';
+        chanceFill.style.width = '0%';
+      } else {
+        var ch = orangeChance(p.pity, p.cap);
+        var pct = (ch * 100).toFixed(1);
+        chanceText.innerHTML = '下一抽出橙估算 <b>' + pct + '%</b>（基础 5.6% + 软保底估算）';
+        chanceFill.style.width = Math.max(2, ch * 100) + '%';
+      }
     }
 
     var lo = $('#lastOrange');
