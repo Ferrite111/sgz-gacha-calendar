@@ -1521,16 +1521,22 @@ textarea::placeholder{color:var(--muted2)}
     var lines = [];
     Object.keys(pack.days || {}).sort().reverse().slice(0, 8).forEach(function(ds){
       var day = pack.days[ds] || {};
-      var names = (day.entries || []).map(function(e){
-        var ref = '';
+      lines.push('<div class="hrow"><span class="hdate">' + ds + '</span><span class="hname">' + dayDraws(day) + ' 抽</span><span class="hpity">本日橙 ' + ((day.entries || []).length) + '</span></div>');
+      (day.entries || []).forEach(function(e, ei){
+        var ref = '未指定抽次';
         if (e.drawIndex != null && day.draws && day.draws[e.drawIndex]) {
           var dref = day.draws[e.drawIndex];
           var label = (DRAW_KINDS[dref.kind] || {}).label || '抽';
           ref = label + (drawUnits(dref) > 1 && e.sub != null ? ('第' + (e.sub + 1) + '抽') : '');
         }
-        return esc(e.name || '橙将') + (e.type === 'core' ? '[核心]' : '') + (ref ? ('（' + ref + '）') : '');
-      }).join('、');
-      lines.push('<div class="hrow"><span class="hdate">' + ds + '</span><span class="hname">' + dayDraws(day) + ' 抽</span>' + (names ? ('<span class="hpity">橙：' + names + '</span>') : '') + '</div>');
+        var isCore = e.type === 'core';
+        var coreBtn = isCore
+          ? '<button class="hcore" data-pk-core="1" data-date="' + ds + '" data-idx="' + ei + '" title="点击切换为普通">核心</button>'
+          : '<button class="btn small ghost" data-pk-core="1" data-date="' + ds + '" data-idx="' + ei + '" title="点击设为核心">设为核心</button>';
+        lines.push('<div class="hrow"><span class="hname' + (isCore ? ' core' : '') + '">' + esc(e.name || '橙将') + '</span>' +
+          '<span class="hpity">' + ref + '</span>' + coreBtn +
+          '<button class="btn small ghost" data-pk-del="1" data-date="' + ds + '" data-idx="' + ei + '">删除</button></div>');
+      });
     });
     rec.innerHTML = lines.join('') || '<div class="hint">暂无记录</div>';
   }
@@ -1563,12 +1569,11 @@ textarea::placeholder{color:var(--muted2)}
       hint: '记录到「' + pack.name + '」今天（' + todayStr + '）；出橙次序会用于计算本包保底。',
       fields: [
         { label: '武将名' },
-        { label: '出自哪一抽', type: 'select', options: refs },
-        { label: '类型', type: 'select', options: [{ value: 'normal', label: '普通橙将' }, { value: 'core', label: '核心橙将（5+1）' }] }
+        { label: '出自哪一抽', type: 'select', options: refs }
       ]
     }).then(function(vals){
       if (!vals || !vals[0]) return;
-      var entry = { name: vals[0], type: vals[2] === 'core' ? 'core' : 'normal' };
+      var entry = { name: vals[0], type: 'normal' };
       if (vals[1]) {
         var parts = vals[1].split(':');
         entry.drawIndex = parseInt(parts[0], 10);
@@ -1977,6 +1982,27 @@ textarea::placeholder{color:var(--muted2)}
     btn.addEventListener('click', function(){ state.settings.heroSort = btn.dataset.heroSort; saveState(); renderHeroTotals(); });
   });
   $('#btnPackOrange').addEventListener('click', packAddOrange);
+  $('#packRecords').addEventListener('click', function(e){
+    var t = e.target;
+    var pack = activePack();
+    if (!pack || !t.dataset) return;
+    var ds = t.dataset.date;
+    var ei = parseInt(t.dataset.idx, 10);
+    var day = pack.days[ds];
+    if (!day || !day.entries || !day.entries[ei]) return;
+    if (t.dataset.pkCore) {
+      day.entries[ei].type = day.entries[ei].type === 'core' ? 'normal' : 'core';
+      saveState(); renderPacks(); renderHeroTotals();
+      return;
+    }
+    if (t.dataset.pkDel) {
+      openDialog({ title: '删除出橙记录', hint: '删除「' + (day.entries[ei].name || '该橙将') + '」这条记录？', confirmOnly: true }).then(function(ok){
+        if (!ok) return;
+        day.entries.splice(ei, 1);
+        saveState(); renderPacks(); renderHeroTotals();
+      });
+    }
+  });
   document.querySelectorAll('[data-pk]').forEach(function(btn){
     btn.addEventListener('click', function(){ packAddDraw(btn.dataset.pk); });
   });
