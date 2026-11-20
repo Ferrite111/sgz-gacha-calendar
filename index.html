@@ -783,7 +783,7 @@ textarea::placeholder{color:var(--muted2)}
   function clamp(n, min, max){ return Math.min(max, Math.max(min, n)); }
   function nowTime(){ var n = new Date(); return pad2(n.getHours()) + ':' + pad2(n.getMinutes()); }
   function defaultState(){
-    return { v: 3, settings: { corePity: 6, drawPity: 30, freeIntervalH: 11.5, season: 1, seasonStart: null }, days: {}, packs: [] };
+    return { v: 3, settings: { corePity: 6, drawPity: 30, freeIntervalH: 11.5, season: 1, seasonLabel: 'S1', seasonStart: null }, days: {}, packs: [] };
   }
 
   function normalizeState(s){
@@ -795,6 +795,11 @@ textarea::placeholder{color:var(--muted2)}
     s.settings.freeIntervalH = (isFinite(fi) && fi >= 1) ? fi : 11.5;
     s.settings.season = Math.max(1, parseInt(s.settings.season, 10) || 1);
     s.settings.seasonStart = s.settings.seasonStart || null;
+    if (!s.settings.seasonLabel) {
+      var sv = s.settings.season;
+      s.settings.seasonLabel = sv === 1 ? 'S1' : (sv === 2 ? 'S2' : 'PK');
+    }
+    s.settings.seasonLabel = String(s.settings.seasonLabel || 'S1');
     s.packs = Array.isArray(s.packs) ? s.packs : [];
     s.packs.forEach(function(pk){
       pk.id = String(pk.id || Date.now());
@@ -1618,29 +1623,43 @@ textarea::placeholder{color:var(--muted2)}
   }
 
   function switchSeason(){
-    var current = state.settings.season || 1;
-    var options = [];
-    for (var i = 1; i <= 8; i++) options.push({ value: String(i), label: 'S' + i });
+    var currentLabel = state.settings.seasonLabel || 'S1';
+    var base = currentLabel === 'S1' ? '1' : (currentLabel === 'S2' ? '2' : 'pk');
+    var custom = base === 'pk' ? currentLabel.replace(/^PK·?/, '') : '';
     openDialog({
       title: '切换赛季',
-      hint: '切换后，大卡包的 5+1 核心保底与 30 抽保底将从今天起重新计数；历史记录保留，小卡包各自独立不受影响。可回退到之前赛季（同样会重置当前计数）。',
-      fields: [{ label: '目标赛季', type: 'select', options: options, value: String(current) }]
+      hint: '赛季结构为 S1、S2，之后进入 PK 赛季（每个 PK 赛季名称不同，可自定义）。切换后大卡包 5+1 与 30 抽保底从今天起重新计数；历史保留，小卡包独立。',
+      fields: [
+        { label: '赛季', type: 'select', options: [
+          { value: '1', label: 'S1' },
+          { value: '2', label: 'S2' },
+          { value: 'pk', label: 'PK 赛季' }
+        ], value: base },
+        { label: 'PK 赛季名称（仅 PK 填写）', value: custom, placeholder: '例如：群雄逐鹿 / 官渡之战' }
+      ]
     }).then(function(vals){
       if (!vals) return;
-      var next = parseInt(vals[0], 10);
-      if (!next || next === current) return;
-      applySeason(next);
+      var label;
+      if (vals[0] === '1') label = 'S1';
+      else if (vals[0] === '2') label = 'S2';
+      else {
+        var name = (vals[1] || '').trim();
+        label = name ? (name.indexOf('PK') === 0 ? name : 'PK·' + name) : 'PK';
+      }
+      if (label === currentLabel) return;
+      applySeasonLabel(label, vals[0]);
     });
   }
 
-  function applySeason(next){
-    state.settings.season = next;
+  function applySeasonLabel(label, base){
+    state.settings.seasonLabel = label;
+    state.settings.season = base === '1' ? 1 : (base === '2' ? 2 : 3);
     state.settings.seasonStart = todayStr;
     var baseDay = state.days[todayStr] || {};
     state.settings.seasonBaseDraws = dayDraws(baseDay);
     state.settings.seasonBaseEntries = (baseDay.entries || []).length;
     saveState(); renderAll();
-    toast('已进入 S' + next + '，大卡包保底已重置');
+    toast('已切换到 ' + label + '，大卡包保底已重置');
   }
 
   function renderAll(){
@@ -1652,7 +1671,7 @@ textarea::placeholder{color:var(--muted2)}
     renderHistory();
     renderPacks();
     renderHeroTotals();
-    if ($('#seasonChip')) $('#seasonChip').textContent = 'S' + (state.settings.season || 1);
+    if ($('#seasonChip')) $('#seasonChip').textContent = state.settings.seasonLabel || 'S1';
   }
 
   function addDrawToDay(kind){
