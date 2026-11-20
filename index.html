@@ -152,6 +152,13 @@ h1{
   .hero-totals{display:flex;flex-wrap:wrap;gap:6px;padding-top:4px}
   .hero-chip{font-size:12px;padding:3px 9px}
   .pack-panel{padding:18px 20px}
+  .pack-pity-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
+  .pack-pity-grid .pity{padding:14px 16px;gap:14px}
+  .pack-pity-grid .ring-wrap{width:96px;height:96px;flex:0 0 96px}
+  .pack-pity-grid .ring{width:100%;height:100%}
+  #packRingNumCore,#packRingNumDraw{font-family:KaiTi,"STKaiti",serif;font-size:30px;font-weight:800;line-height:1;color:var(--gold-hi)}
+  .draw-pity #packRingNumDraw{color:#d9cfff}
+  @media(max-width:760px){.pack-pity-grid{grid-template-columns:1fr}}
   .hero-total-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;padding-top:2px}
   .hero-cell{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:10px;background:rgba(255,255,255,.028);border:1px solid rgba(255,255,255,.05);font-size:12.5px}
   .hero-cell .hname{font-weight:700;color:#c9bdf2}
@@ -570,7 +577,47 @@ textarea::placeholder{color:var(--muted2)}
       <button class="btn small" data-pk="five">五连 +5</button>
       <button class="btn primary" id="btnPackOrange">记录出橙</button>
     </div>
-    <div class="pity-sub" id="packPity"></div>
+    <div class="pack-pity-grid" id="packPityGrid">
+      <div class="pity">
+        <div class="ring-wrap" id="packRingWrapCore">
+          <svg class="ring" viewBox="0 0 142 142">
+            <circle class="ring-bg" cx="71" cy="71" r="50"/>
+            <circle class="ring-fg" id="packRingFgCore" cx="71" cy="71" r="50"/>
+          </svg>
+          <div class="ring-center">
+            <span id="packRingNumCore">—</span>
+            <span id="packRingUnitCore">个普通橙</span>
+          </div>
+        </div>
+        <div class="pity-main">
+          <div class="pity-title">本包核心保底 · <b>5+1</b></div>
+          <div class="pity-line" id="packCoreMain">—</div>
+          <div class="pity-sub" id="packCoreSub">—</div>
+          <div class="dots" id="packCoreDots"></div>
+        </div>
+      </div>
+      <div class="pity draw-pity">
+        <div class="ring-wrap" id="packRingWrapDraw">
+          <svg class="ring" viewBox="0 0 142 142">
+            <circle class="ring-bg" cx="71" cy="71" r="50"/>
+            <circle class="ring-fg" id="packRingFgDraw" cx="71" cy="71" r="50"/>
+          </svg>
+          <div class="ring-center">
+            <span id="packRingNumDraw">—</span>
+            <span id="packRingUnitDraw">抽未出橙</span>
+          </div>
+        </div>
+        <div class="pity-main">
+          <div class="pity-title">本包 30 抽保底 · <b>必出橙</b></div>
+          <div class="pity-line" id="packDrawMain">—</div>
+          <div class="pity-sub" id="packDrawSub">—</div>
+          <div class="chance">
+            <div class="chance-bar"><div class="chance-fill" id="packChanceFill"></div></div>
+            <div class="chance-text" id="packChanceText">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="pack-records" id="packRecords"></div>
   </section>
 
@@ -1369,7 +1416,24 @@ textarea::placeholder{color:var(--muted2)}
       });
       unlabeled.forEach(function(e){ last = { name: e.name, date: ds }; pity = 0; });
     });
-    return { pity: pity, cap: cap, total: total, last: last, expired: false };
+    return { pity: pity, cap: cap, remain: Math.max(cap - pity, 0), total: total, last: last, expired: false };
+  }
+
+  function computePackCore(pack){
+    var interval = state.settings.corePity;
+    var result = { normalsSinceCore: 0, interval: interval, remain: interval, cores: 0, lastCore: null, expired: false };
+    if (!pack) return result;
+    if (packExpired(pack)) { result.expired = true; result.remain = interval; return result; }
+    var n = 0;
+    Object.keys(pack.days || {}).sort().forEach(function(ds){
+      ((pack.days[ds] || {}).entries || []).forEach(function(e){
+        if (e.type === 'core') { result.cores += 1; n = 0; result.lastCore = { name: e.name, date: ds }; }
+        else { n += 1; }
+      });
+    });
+    result.normalsSinceCore = n;
+    result.remain = Math.max(interval - n, 0);
+    return result;
   }
 
   function activePack(){
@@ -1377,6 +1441,59 @@ textarea::placeholder{color:var(--muted2)}
     if (!sel) return null;
     var id = sel.value;
     return (state.packs || []).filter(function(pk){ return pk.id === id; })[0] || null;
+  }
+
+  function renderPackPity(pack, cp, cc){
+    var C = (typeof RING_C !== 'undefined') ? RING_C : 314;
+    var coreNum = $('#packRingNumCore'), coreUnit = $('#packRingUnitCore');
+    var coreFg = $('#packRingFgCore'), coreWrap = $('#packRingWrapCore');
+    var coreMain = $('#packCoreMain'), coreSub = $('#packCoreSub'), dots = $('#packCoreDots');
+    var drawNum = $('#packRingNumDraw'), drawUnit = $('#packRingUnitDraw');
+    var drawFg = $('#packRingFgDraw'), drawWrap = $('#packRingWrapDraw');
+    var drawMain = $('#packDrawMain'), drawSub = $('#packDrawSub');
+    var chanceText = $('#packChanceText'), chanceFill = $('#packChanceFill');
+    if (!pack) {
+      coreNum.textContent = '—'; coreUnit.textContent = '个普通橙';
+      coreMain.textContent = '未选择小卡包'; coreSub.textContent = '每个小卡包独立计算 5+1 核心保底';
+      coreFg.style.strokeDashoffset = String(C); dots.innerHTML = '';
+      drawNum.textContent = '—'; drawUnit.textContent = '抽未出橙';
+      drawMain.textContent = '未选择小卡包'; drawSub.textContent = '每个小卡包独立计算 30 抽保底';
+      drawFg.style.strokeDashoffset = String(C);
+      chanceText.textContent = '下一抽出橙估算 —'; chanceFill.style.width = '0%';
+      return;
+    }
+    var expired = cp.expired;
+    var interval = cc.interval || state.settings.corePity;
+    var coreProgress = Math.min(cc.normalsSinceCore / interval, 1);
+    var coreReady = !expired && cc.normalsSinceCore >= interval - 1;
+    coreFg.style.strokeDasharray = String(C);
+    coreFg.style.strokeDashoffset = String(C * (1 - coreProgress));
+    coreWrap.classList.toggle('ready', coreReady);
+    coreNum.textContent = expired ? '—' : String(cc.normalsSinceCore);
+    coreUnit.textContent = expired ? '已过期' : ('/ ' + interval + ' 个普通橙');
+    coreMain.classList.toggle('ready', coreReady);
+    coreMain.textContent = expired ? '已过期：核心计数失效' : (coreReady ? '下一个普通橙必为核心！' : ('还差 ' + cc.remain + ' 个普通橙出核心'));
+    coreSub.textContent = expired ? '记录保留，保底不再清算' : ('本包已出核心 ' + cc.cores + ' 次 · 普通橙 ' + cc.normalsSinceCore + ' 个');
+    dots.innerHTML = '';
+    for (var i = 0; i < interval; i += 1) {
+      var d = document.createElement('span');
+      d.className = 'dot' + (i < cc.normalsSinceCore ? ' on' : '');
+      dots.appendChild(d);
+    }
+    var cap = cp.cap;
+    var drawProgress = Math.min(cp.pity / cap, 1);
+    var drawReady = !expired && cp.pity >= cap - 1;
+    drawFg.style.strokeDasharray = String(C);
+    drawFg.style.strokeDashoffset = String(C * (1 - drawProgress));
+    drawWrap.classList.toggle('ready', drawReady);
+    drawNum.textContent = expired ? '—' : String(cp.pity);
+    drawUnit.textContent = expired ? '已过期' : ('/ ' + cap + ' 抽');
+    drawMain.classList.toggle('ready', drawReady);
+    drawMain.textContent = expired ? '已过期：30 抽保底失效' : (drawReady ? '这一抽必出橙将！' : ('距 ' + cap + ' 抽保底还有 ' + cp.remain + ' 抽'));
+    drawSub.textContent = expired ? '记录保留，保底不再清算' : ('本包累计 ' + cp.total + ' 抽' + (cp.last ? (' · 上次出橙 ' + esc(cp.last.name)) : ''));
+    var ch = expired ? 0 : orangeChance(cp.pity, cap);
+    chanceText.innerHTML = expired ? '已过期' : ('下一抽出橙估算 <b>' + (ch * 100).toFixed(1) + '%</b>');
+    chanceFill.style.width = Math.max(2, ch * 100) + '%';
   }
 
   function renderPacks(){
@@ -1388,18 +1505,17 @@ textarea::placeholder{color:var(--muted2)}
     }).join('');
     if ((state.packs || []).some(function(pk){ return pk.id === keep; })) sel.value = keep;
     var pack = activePack();
-    var status = $('#packStatus'), pty = $('#packPity'), rec = $('#packRecords');
+    var status = $('#packStatus'), rec = $('#packRecords');
     if (!pack) {
       status.textContent = '未选择卡包';
-      pty.textContent = '小卡包保底与大卡包完全独立；卡包过期后保底不保留，出橙记录仍计入武将累计。';
       rec.innerHTML = '';
+      renderPackPity(null, null, null);
       return;
     }
     var cp = computePackPity(pack);
+    var cc = computePackCore(pack);
     status.textContent = pack.name + (pack.end ? (' · 截止 ' + pack.end) : '');
-    pty.innerHTML = cp.expired
-      ? '已过期：保底与核心计数已失效（记录保留）'
-      : ('已 <b>' + cp.pity + '</b>/' + cp.cap + ' 抽未出橙 · 本包累计 ' + cp.total + ' 抽' + (cp.last ? (' · 上次出橙 ' + esc(cp.last.name)) : ''));
+    renderPackPity(pack, cp, cc);
     var lines = [];
     Object.keys(pack.days || {}).sort().reverse().slice(0, 8).forEach(function(ds){
       var day = pack.days[ds] || {};
