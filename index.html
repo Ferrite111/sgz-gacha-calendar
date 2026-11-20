@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="author" content="Ferrite">
-<meta name="description" content="三国志战略版抽卡日历 v2.1：记录免费/半价/五连抽、抽卡时间、橙将与核心保底、30 抽保底进度。单文件网页，数据保存在本机。by Ferrite">
+<meta name="description" content="三国志战略版抽卡日历 v3.0：记录免费/半价/五连抽、抽卡时间、橙将与核心保底、30 抽保底进度。单文件网页，数据保存在本机。by Ferrite">
 <meta name="color-scheme" content="dark">
-<title>三战抽卡日历 v2.1</title>
+<title>三战抽卡日历 v3.0</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='0.9em' font-size='88' fill='%23e7b95f'%3E%E6%98%9F%3C/text%3E%3C/svg%3E">
 <style>
 :root{
@@ -133,6 +133,12 @@ h1{
   .chance-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,#8c7bd8,#d9cfff);transition:width .45s ease}
   .chance-text{font-size:12px;color:var(--muted);white-space:nowrap}
   .chance-text b{color:#e8c887;font-size:14.5px}
+  .season-chip{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid rgba(217,188,124,.4);color:var(--gold);background:rgba(217,188,124,.08);margin-left:6px}
+  .pack-select{min-width:170px}
+  .pack-records{margin-top:8px;font-size:12px;color:var(--muted)}
+  .pack-row{padding:4px 0;border-bottom:1px dashed rgba(160,145,230,.12)}
+  .hero-totals{display:flex;flex-wrap:wrap;gap:6px;padding-top:4px}
+  .hero-chip{font-size:12px;padding:3px 9px}
 .dots{display:flex;gap:7px;margin:11px 0 9px}
 .dot{width:13px;height:13px;border-radius:50%;border:1px solid rgba(231,185,105,.4);background:transparent;transition:.3s}
 .dot.filled{background:linear-gradient(135deg,#c6b6f5,#8d7fd0);border-color:transparent;box-shadow:0 0 9px rgba(160,145,230,.45)}
@@ -418,7 +424,7 @@ textarea::placeholder{color:var(--muted2)}
       <div class="logo">战</div>
       <div>
         <h1>三战抽卡日历</h1>
-        <p class="sub">记录每一次抽卡与金光乍现 · 5+1 核心保底 + 30 抽保底</p>
+        <p class="sub">记录每一次抽卡与金光乍现 · 5+1 核心保底 · 30 抽保底 · 小卡包独立保底</p>
       </div>
     </div>
     <div class="actions">
@@ -498,6 +504,8 @@ textarea::placeholder{color:var(--muted2)}
     <div class="quick-head">
       <span class="quick-title">今日抽卡</span>
       <span class="quick-status" id="quickStatus">—</span>
+      <span class="season-chip" id="seasonChip">S1</span>
+      <button class="btn small" id="btnNewSeason" title="进入新赛季：大卡包保底与核心计数从今天起重置">赛季切换</button>
     </div>
     <div class="quick-btns">
       <label class="time-field" title="默认当前时间，可改为实际抽卡时间">记录时间
@@ -524,6 +532,29 @@ textarea::placeholder{color:var(--muted2)}
     <div class="grid" id="calGrid"></div>
   </section>
 
+
+  <section class="panel pack-panel">
+    <div class="quick-head">
+      <span class="quick-title">小卡包（限时 · 独立保底）</span>
+      <span class="quick-status" id="packStatus">未选择卡包</span>
+    </div>
+    <div class="quick-btns">
+      <select id="packSelect" class="pack-select"><option value="">选择小卡包…</option></select>
+      <button class="btn small" id="btnPackNew">新建卡包</button>
+      <button class="btn small ghost" id="btnPackDel">删除</button>
+      <button class="btn small" data-pk="free">单抽 +1</button>
+      <button class="btn small" data-pk="five">五连 +5</button>
+      <button class="btn small" id="btnPackOrange">记录出橙</button>
+    </div>
+    <div class="pity-sub" id="packPity"></div>
+    <div class="pack-records" id="packRecords"></div>
+  </section>
+
+  <section class="panel hero-total-panel">
+    <div class="history-head"><span class="history-title">武将累计（大卡包 + 小卡包）</span></div>
+    <div id="heroTotals" class="hero-totals"><span class="hint">暂无出橙记录</span></div>
+  </section>
+
   <section class="panel history-panel">
     <div class="history-head">
       <span class="history-title">出橙记录</span>
@@ -532,7 +563,7 @@ textarea::placeholder{color:var(--muted2)}
     <div class="history-list" id="historyList"></div>
   </section>
 
-  <footer>三战抽卡日历 <span style="color:var(--gold)">v2.1</span> · Designed by <b style="color:var(--gold);font-weight:600">Ferrite</b> · 数据保存在本机浏览器 · 清除浏览器数据会丢失记录 · 建议定期「导出备份」</footer>
+  <footer>三战抽卡日历 <span style="color:var(--gold)">v3.0</span> · Designed by <b style="color:var(--gold);font-weight:600">Ferrite</b> · 数据保存在本机浏览器 · 清除浏览器数据会丢失记录 · 建议定期「导出备份」</footer>
 </div>
 
 <div class="ferrite-mark">✦ Ferrite</div>
@@ -673,21 +704,38 @@ textarea::placeholder{color:var(--muted2)}
   };
 
   function pad2(n){ return String(n).padStart(2, '0'); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
   function fmtDate(d){ return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); }
   function parseDateStr(s){ var p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
   function clamp(n, min, max){ return Math.min(max, Math.max(min, n)); }
   function nowTime(){ var n = new Date(); return pad2(n.getHours()) + ':' + pad2(n.getMinutes()); }
   function defaultState(){
-    return { v: 2, settings: { corePity: 6, drawPity: 30, freeIntervalH: 11.5 }, days: {} };
+    return { v: 3, settings: { corePity: 6, drawPity: 30, freeIntervalH: 11.5, season: 1, seasonStart: null }, days: {}, packs: [] };
   }
 
   function normalizeState(s){
-    s.v = 2;
+    s.v = 3;
     s.settings = s.settings || {};
     s.settings.corePity = clamp(parseInt(s.settings.corePity, 10) || 6, 2, 12);
     s.settings.drawPity = clamp(parseInt(s.settings.drawPity, 10) || 30, 5, 80);
     var fi = parseFloat(s.settings.freeIntervalH);
     s.settings.freeIntervalH = (isFinite(fi) && fi >= 1) ? fi : 11.5;
+    s.settings.season = Math.max(1, parseInt(s.settings.season, 10) || 1);
+    s.settings.seasonStart = s.settings.seasonStart || null;
+    s.packs = Array.isArray(s.packs) ? s.packs : [];
+    s.packs.forEach(function(pk){
+      pk.id = String(pk.id || Date.now());
+      pk.name = pk.name || '小卡包';
+      pk.end = pk.end || '';
+      pk.days = pk.days || {};
+      Object.keys(pk.days).forEach(function(ds){
+        var day = pk.days[ds] || {};
+        day.entries = day.entries || [];
+        day.draws = day.draws || [];
+        day.note = day.note || '';
+        pk.days[ds] = day;
+      });
+    });
     Object.keys(s.days).forEach(function(ds){
       var day = s.days[ds] || {};
       day.entries = day.entries || [];
@@ -772,15 +820,21 @@ textarea::placeholder{color:var(--muted2)}
     return list;
   }
 
-  function computePity(){
+  function seasonDays(){
+    var start = state.settings.seasonStart;
+    return daysSorted().filter(function(ds){ return !start || ds >= start; });
+  }
+
+  function computePity(seasonOnly){
     var n = 0;
     var lastCore = null;
     var total = 0;
     var cores = 0;
     var normals = 0;
-    daysSorted().forEach(function(ds){
+    (seasonOnly ? seasonDays() : daysSorted()).forEach(function(ds){
       var entries = (state.days[ds] || {}).entries || [];
-      entries.forEach(function(e){
+      entries.forEach(function(e, ei){
+        if (seasonOnly && state.settings.seasonStart === ds && ei < (state.settings.seasonBaseEntries || 0)) return;
         total++;
         if (e.type === 'core') {
           cores++;
@@ -804,12 +858,12 @@ textarea::placeholder{color:var(--muted2)}
     };
   }
 
-  function computeDrawPity(){
+  function computeDrawPity(seasonOnly){
     var pity = 0;
     var totalDraws = 0;
     var history = [];
     var lastOrange = null;
-    daysSorted().forEach(function(ds){
+    (seasonOnly ? seasonDays() : daysSorted()).forEach(function(ds){
       var day = state.days[ds] || {};
       var draws = day.draws || [];
       var entries = day.entries || [];
@@ -823,9 +877,12 @@ textarea::placeholder{color:var(--muted2)}
           unlabeled.push(e);
         }
       });
+      var unitIndex = 0;
       draws.forEach(function(d, i){
         var units = drawUnits(d);
         for (var k = 1; k <= units; k++) {
+          unitIndex += 1;
+          if (seasonOnly && state.settings.seasonStart === ds && unitIndex <= (state.settings.seasonBaseDraws || 0)) continue;
           pity += 1;
           totalDraws += 1;
           var sub = units > 1 ? k : 0;
@@ -904,7 +961,7 @@ textarea::placeholder{color:var(--muted2)}
   }
 
   function renderPity(){
-    var p = computePity();
+    var p = computePity(true);
     var n = p.normalsSinceCore;
     var interval = p.interval;
     var remain = p.remain;
@@ -980,7 +1037,7 @@ textarea::placeholder{color:var(--muted2)}
   }
 
   function renderDrawPity(){
-    var p = computeDrawPity();
+    var p = computeDrawPity(true);
     var ready = p.totalDraws > 0 && p.pity >= p.cap - 1;
 
     var progress = p.cap > 0 ? Math.min(p.pity / p.cap, 1) : 0;
@@ -992,8 +1049,13 @@ textarea::placeholder{color:var(--muted2)}
     var ringNum = $('#ringNum2');
     var ringUnit = $('#ringUnit2');
     if (p.totalDraws === 0) {
-      ringNum.textContent = '—';
-      ringUnit.textContent = '未记录抽数';
+      if (state.settings.seasonStart) {
+        ringNum.textContent = '0';
+        ringUnit.textContent = '/ ' + p.cap + ' 抽';
+      } else {
+        ringNum.textContent = '—';
+        ringUnit.textContent = '未记录抽数';
+      }
     } else {
       ringNum.textContent = String(p.pity);
       ringUnit.textContent = '/ ' + p.cap + ' 抽';
@@ -1003,8 +1065,13 @@ textarea::placeholder{color:var(--muted2)}
     var sub = $('#drawPitySub');
     main.classList.toggle('ready', ready);
     if (p.totalDraws === 0) {
-      main.textContent = '还没有抽数记录';
-      sub.textContent = '用上方「今日抽卡」快捷按钮记录每天的抽卡次数';
+      if (state.settings.seasonStart) {
+        main.textContent = '新赛季保底已重置';
+        sub.textContent = '从 ' + state.settings.seasonStart + ' 起重新计数（历史记录保留）';
+      } else {
+        main.textContent = '还没有抽数记录';
+        sub.textContent = '用上方「今日抽卡」快捷按钮记录每天的抽卡次数';
+      }
     } else if (ready) {
       main.textContent = '这一抽必出橙将！';
       sub.textContent = '已累计 ' + p.pity + ' 抽未出橙（保底 ' + p.cap + ' 抽）';
@@ -1216,6 +1283,135 @@ textarea::placeholder{color:var(--muted2)}
     });
   }
 
+
+  function packExpired(pack){ return !!(pack && pack.end && todayStr > pack.end); }
+
+  function computePackPity(pack){
+    var cap = state.settings.drawPity;
+    if (!pack) return { pity: 0, cap: cap, total: 0, last: null, expired: false };
+    if (packExpired(pack)) return { pity: 0, cap: cap, total: 0, last: null, expired: true };
+    var pity = 0, total = 0, last = null;
+    Object.keys(pack.days || {}).sort().forEach(function(ds){
+      var day = pack.days[ds] || {};
+      var draws = day.draws || [];
+      var entries = day.entries || [];
+      var byRef = {};
+      var unlabeled = [];
+      entries.forEach(function(e){
+        if (typeof e.drawIndex === 'number' && e.drawIndex >= 0 && e.drawIndex < draws.length) {
+          var key = e.drawIndex + ':' + (e.sub || 0);
+          (byRef[key] = byRef[key] || []).push(e);
+        } else { unlabeled.push(e); }
+      });
+      draws.forEach(function(d, i){
+        var units = drawUnits(d);
+        for (var k = 1; k <= units; k++) {
+          pity += 1; total += 1;
+          var sub = units > 1 ? k : 0;
+          var hits = byRef[i + ':' + sub];
+          if (hits) { hits.forEach(function(e){ last = { name: e.name, date: ds }; pity = 0; }); }
+        }
+      });
+      unlabeled.forEach(function(e){ last = { name: e.name, date: ds }; pity = 0; });
+    });
+    return { pity: pity, cap: cap, total: total, last: last, expired: false };
+  }
+
+  function activePack(){
+    var sel = $('#packSelect');
+    if (!sel) return null;
+    var id = sel.value;
+    return (state.packs || []).filter(function(pk){ return pk.id === id; })[0] || null;
+  }
+
+  function renderPacks(){
+    var sel = $('#packSelect');
+    if (!sel) return;
+    var keep = sel.value;
+    sel.innerHTML = '<option value="">选择小卡包…</option>' + (state.packs || []).map(function(pk){
+      return '<option value="' + esc(pk.id) + '">' + esc(pk.name) + (pk.end ? (' · 至' + esc(pk.end)) : '') + '</option>';
+    }).join('');
+    if ((state.packs || []).some(function(pk){ return pk.id === keep; })) sel.value = keep;
+    var pack = activePack();
+    var status = $('#packStatus'), pty = $('#packPity'), rec = $('#packRecords');
+    if (!pack) {
+      status.textContent = '未选择卡包';
+      pty.textContent = '小卡包保底与大卡包完全独立；卡包过期后保底不保留，出橙记录仍计入武将累计。';
+      rec.innerHTML = '';
+      return;
+    }
+    var cp = computePackPity(pack);
+    status.textContent = pack.name + (pack.end ? (' · 截止 ' + pack.end) : '');
+    pty.innerHTML = cp.expired
+      ? '已过期：保底与核心计数已失效（记录保留）'
+      : ('已 <b>' + cp.pity + '</b>/' + cp.cap + ' 抽未出橙 · 本包累计 ' + cp.total + ' 抽' + (cp.last ? (' · 上次出橙 ' + esc(cp.last.name)) : ''));
+    var lines = [];
+    Object.keys(pack.days || {}).sort().reverse().slice(0, 8).forEach(function(ds){
+      var day = pack.days[ds] || {};
+      var names = (day.entries || []).map(function(e){ return esc(e.name || '橙将') + (e.drawIndex != null ? ('(第' + (e.drawIndex + 1) + '抽)') : ''); }).join('、');
+      lines.push('<div class="pack-row"><b>' + ds + '</b> · ' + dayDraws(day) + ' 抽' + (names ? (' · 橙：' + names) : '') + '</div>');
+    });
+    rec.innerHTML = lines.join('') || '<div class="hint">暂无记录</div>';
+  }
+
+  function packAddDraw(kind){
+    var pack = activePack();
+    if (!pack) { toast('先新建/选择一个小卡包'); return; }
+    if (packExpired(pack)) { toast('该小卡包已过期，保底不再保留'); return; }
+    var day = pack.days[todayStr] = pack.days[todayStr] || { draws: [], entries: [], note: '' };
+    day.draws.push({ kind: kind, time: nowTime() });
+    saveState(); renderPacks(); renderHeroTotals();
+  }
+
+  function packAddOrange(){
+    var pack = activePack();
+    if (!pack) { toast('先新建/选择一个小卡包'); return; }
+    if (packExpired(pack)) { toast('该小卡包已过期'); return; }
+    var name = prompt('武将名（小卡包出橙）');
+    if (!name || !name.trim()) return;
+    var idxRaw = prompt('出自本包今日第几抽（从 1 起，可留空）', '');
+    var day = pack.days[todayStr] = pack.days[todayStr] || { draws: [], entries: [], note: '' };
+    var entry = { name: name.trim(), type: 'normal' };
+    var idx = parseInt(idxRaw, 10);
+    if (idx > 0) entry.drawIndex = idx - 1;
+    day.entries.push(entry);
+    saveState(); renderPacks(); renderHeroTotals();
+  }
+
+  function renderHeroTotals(){
+    var el = $('#heroTotals');
+    if (!el) return;
+    var counts = {};
+    function collect(days){
+      Object.keys(days || {}).forEach(function(ds){
+        ((days[ds] || {}).entries || []).forEach(function(e){
+          var n = (e.name || '未命名').trim();
+          counts[n] = (counts[n] || 0) + 1;
+        });
+      });
+    }
+    collect(state.days);
+    (state.packs || []).forEach(function(pk){ collect(pk.days); });
+    var rows = Object.keys(counts).map(function(n){ return [n, counts[n]]; })
+      .sort(function(a, b){ return b[1] - a[1] || a[0].localeCompare(b[0]); });
+    if (!rows.length) { el.innerHTML = '<span class="hint">暂无出橙记录</span>'; return; }
+    el.innerHTML = rows.slice(0, 40).map(function(r){
+      return '<span class="chip hero-chip">' + esc(r[0]) + ' ×' + r[1] + '</span>';
+    }).join(' ');
+  }
+
+  function switchSeason(){
+    var next = (state.settings.season || 1) + 1;
+    if (!confirm('进入 S' + next + '？\n大卡包的 5+1 核心保底与 30 抽保底将从今天起重新计数；历史记录保留，小卡包各自独立不受影响。')) return;
+    state.settings.season = next;
+    state.settings.seasonStart = todayStr;
+    var baseDay = state.days[todayStr] || {};
+    state.settings.seasonBaseDraws = dayDraws(baseDay);
+    state.settings.seasonBaseEntries = (baseDay.entries || []).length;
+    saveState(); renderAll();
+    toast('已进入 S' + next + '，大卡包保底已重置');
+  }
+
   function renderAll(){
     renderPity();
     renderDrawPity();
@@ -1223,6 +1419,9 @@ textarea::placeholder{color:var(--muted2)}
     renderQuick();
     renderCalendar();
     renderHistory();
+    renderPacks();
+    renderHeroTotals();
+    if ($('#seasonChip')) $('#seasonChip').textContent = 'S' + (state.settings.season || 1);
   }
 
   function addDrawToDay(kind){
@@ -1521,6 +1720,28 @@ textarea::placeholder{color:var(--muted2)}
   $('#btnDrawPaid').addEventListener('click', function(){ addDrawToDay('paid'); });
   $('#btnDrawFive').addEventListener('click', function(){ addDrawToDay('five'); });
   $('#btnQuickNow').addEventListener('click', function(){ $('#quickTime').value = nowTime(); });
+  $('#btnNewSeason').addEventListener('click', switchSeason);
+  $('#btnPackNew').addEventListener('click', function(){
+    var name = prompt('小卡包名称（例如：S2 霸业 · 名将）');
+    if (!name || !name.trim()) return;
+    var end = prompt('截止日期（YYYY-MM-DD，可留空）', '');
+    var pk = { id: String(Date.now()), name: name.trim(), end: (end || '').trim(), days: {} };
+    state.packs.push(pk);
+    saveState(); renderPacks();
+    $('#packSelect').value = pk.id; renderPacks();
+    toast('已新建小卡包「' + pk.name + '」');
+  });
+  $('#btnPackDel').addEventListener('click', function(){
+    var pk = activePack(); if (!pk) { toast('先选择一个小卡包'); return; }
+    if (!confirm('删除小卡包「' + pk.name + '」及其记录？')) return;
+    state.packs = state.packs.filter(function(x){ return x.id !== pk.id; });
+    saveState(); renderPacks(); renderHeroTotals();
+  });
+  $('#packSelect').addEventListener('change', renderPacks);
+  $('#btnPackOrange').addEventListener('click', packAddOrange);
+  document.querySelectorAll('[data-pk]').forEach(function(btn){
+    btn.addEventListener('click', function(){ packAddDraw(btn.dataset.pk); });
+  });
   $('#btnOpenToday').addEventListener('click', function(){ openDay(todayStr); });
 
   document.querySelectorAll('[data-addkind]').forEach(function(btn){
