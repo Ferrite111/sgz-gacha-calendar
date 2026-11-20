@@ -134,7 +134,19 @@ h1{
   .chance-text{font-size:12px;color:var(--muted);white-space:nowrap}
   .chance-text b{color:#e8c887;font-size:14.5px}
   .season-chip{font-size:12px;padding:3px 10px;border-radius:999px;border:1px solid rgba(217,188,124,.4);color:var(--gold);background:rgba(217,188,124,.08);margin-left:6px}
-  .pack-select{min-width:170px}
+  .pack-select{min-width:190px;height:38px}
+  #packSelect,#uiFields select{
+    -webkit-appearance:none;appearance:none;
+    background-color:rgba(255,255,255,.045);
+    background-image:linear-gradient(45deg,transparent 50%,#b9a67a 50%),linear-gradient(135deg,#b9a67a 50%,transparent 50%);
+    background-position:calc(100% - 16px) 50%,calc(100% - 11px) 50%;
+    background-size:5px 5px,5px 5px;background-repeat:no-repeat;
+    border:1px solid var(--line);border-radius:10px;color:#e6dcc8;
+    padding:9px 34px 9px 12px;font:inherit;font-size:13.5px;outline:none;cursor:pointer;
+  }
+  #uiFields select{width:100%}
+  #packSelect:focus,#uiFields select:focus{border-color:var(--line-strong)}
+  #packSelect option,#uiFields select option{background:#1b1711;color:#e6dcc8}
   .pack-records{margin-top:8px;font-size:12px;color:var(--muted)}
   .pack-row{padding:4px 0;border-bottom:1px dashed rgba(160,145,230,.12)}
   .hero-totals{display:flex;flex-wrap:wrap;gap:6px;padding-top:4px}
@@ -149,7 +161,7 @@ h1{
   .hero-cell .hdate{color:var(--muted2);font-size:11px}
   .hsort{display:flex;gap:6px;margin-left:auto}
   .hsort .btn.active{color:var(--gold-hi);border-color:var(--line-strong)}
-  #uiFields input{width:100%;background:rgba(255,255,255,.045);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px 12px;font:inherit;font-size:13.5px;outline:none}
+  #uiFields input{width:100%;background:rgba(255,255,255,.045);border:1px solid var(--line);border-radius:10px;color:#e6dcc8;padding:10px 12px;font:inherit;font-size:13.5px;outline:none}
   #uiFields input:focus{border-color:var(--line-strong)}
 .dots{display:flex;gap:7px;margin:11px 0 9px}
 .dot{width:13px;height:13px;border-radius:50%;border:1px solid rgba(231,185,105,.4);background:transparent;transition:.3s}
