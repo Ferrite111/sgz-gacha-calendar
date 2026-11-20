@@ -139,6 +139,11 @@ h1{
   .pack-row{padding:4px 0;border-bottom:1px dashed rgba(160,145,230,.12)}
   .hero-totals{display:flex;flex-wrap:wrap;gap:6px;padding-top:4px}
   .hero-chip{font-size:12px;padding:3px 9px}
+  .pack-panel{padding:18px 20px}
+  .hero-total-list{display:flex;flex-direction:column;gap:6px;max-height:280px;overflow:auto;padding-right:4px}
+  .hrow .hcount{margin-left:auto;color:var(--gold);font-weight:700;font-size:12.5px}
+  #uiFields input{width:100%;background:rgba(255,255,255,.045);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px 12px;font:inherit;font-size:13.5px;outline:none}
+  #uiFields input:focus{border-color:var(--line-strong)}
 .dots{display:flex;gap:7px;margin:11px 0 9px}
 .dot{width:13px;height:13px;border-radius:50%;border:1px solid rgba(231,185,105,.4);background:transparent;transition:.3s}
 .dot.filled{background:linear-gradient(135deg,#c6b6f5,#8d7fd0);border-color:transparent;box-shadow:0 0 9px rgba(160,145,230,.45)}
@@ -534,9 +539,9 @@ textarea::placeholder{color:var(--muted2)}
 
 
   <section class="panel pack-panel">
-    <div class="quick-head">
-      <span class="quick-title">小卡包（限时 · 独立保底）</span>
-      <span class="quick-status" id="packStatus">未选择卡包</span>
+    <div class="history-head">
+      <span class="history-title">小卡包 · 限时独立保底</span>
+      <span class="history-sub" id="packStatus">未选择卡包</span>
     </div>
     <div class="quick-btns">
       <select id="packSelect" class="pack-select"><option value="">选择小卡包…</option></select>
@@ -552,7 +557,7 @@ textarea::placeholder{color:var(--muted2)}
 
   <section class="panel hero-total-panel">
     <div class="history-head"><span class="history-title">武将累计（大卡包 + 小卡包）</span></div>
-    <div id="heroTotals" class="hero-totals"><span class="hint">暂无出橙记录</span></div>
+    <div id="heroTotals" class="hero-total-list"><div class="hint">暂无出橙记录</div></div>
   </section>
 
   <section class="panel history-panel">
@@ -1284,6 +1289,33 @@ textarea::placeholder{color:var(--muted2)}
   }
 
 
+  function openDialog(opts){
+    return new Promise(function(resolve){
+      var modal = $('#uiModal');
+      $('#uiTitle').textContent = opts.title || '操作';
+      $('#uiHint').textContent = opts.hint || '';
+      var fields = opts.fields || [];
+      $('#uiFields').innerHTML = fields.map(function(f, i){
+        return '<label class="field-label">' + esc(f.label) + '<input id="uiF' + i + '" type="' + (f.type || 'text') + '" placeholder="' + esc(f.placeholder || '') + '" value="' + esc(f.value || '') + '"></label>';
+      }).join('');
+      modal.classList.add('open');
+      setTimeout(function(){ var first = $('#uiF0'); if (first) first.focus(); }, 60);
+      function close(result){
+        modal.classList.remove('open');
+        $('#uiOk').onclick = null;
+        $('#uiCancel').onclick = null;
+        $('#uiClose').onclick = null;
+        resolve(result);
+      }
+      $('#uiOk').onclick = function(){
+        var vals = fields.map(function(f, i){ return ($('#uiF' + i).value || '').trim(); });
+        close(opts.confirmOnly ? true : vals);
+      };
+      $('#uiCancel').onclick = function(){ close(null); };
+      $('#uiClose').onclick = function(){ close(null); };
+    });
+  }
+
   function packExpired(pack){ return !!(pack && pack.end && todayStr > pack.end); }
 
   function computePackPity(pack){
@@ -1349,7 +1381,7 @@ textarea::placeholder{color:var(--muted2)}
     Object.keys(pack.days || {}).sort().reverse().slice(0, 8).forEach(function(ds){
       var day = pack.days[ds] || {};
       var names = (day.entries || []).map(function(e){ return esc(e.name || '橙将') + (e.drawIndex != null ? ('(第' + (e.drawIndex + 1) + '抽)') : ''); }).join('、');
-      lines.push('<div class="pack-row"><b>' + ds + '</b> · ' + dayDraws(day) + ' 抽' + (names ? (' · 橙：' + names) : '') + '</div>');
+      lines.push('<div class="hrow"><span class="hdate">' + ds + '</span><span class="hname">' + dayDraws(day) + ' 抽</span>' + (names ? ('<span class="hpity">橙：' + names + '</span>') : '') + '</div>');
     });
     rec.innerHTML = lines.join('') || '<div class="hint">暂无记录</div>';
   }
@@ -1367,15 +1399,22 @@ textarea::placeholder{color:var(--muted2)}
     var pack = activePack();
     if (!pack) { toast('先新建/选择一个小卡包'); return; }
     if (packExpired(pack)) { toast('该小卡包已过期'); return; }
-    var name = prompt('武将名（小卡包出橙）');
-    if (!name || !name.trim()) return;
-    var idxRaw = prompt('出自本包今日第几抽（从 1 起，可留空）', '');
-    var day = pack.days[todayStr] = pack.days[todayStr] || { draws: [], entries: [], note: '' };
-    var entry = { name: name.trim(), type: 'normal' };
-    var idx = parseInt(idxRaw, 10);
-    if (idx > 0) entry.drawIndex = idx - 1;
-    day.entries.push(entry);
-    saveState(); renderPacks(); renderHeroTotals();
+    openDialog({
+      title: '记录小卡包出橙',
+      hint: '记录到「' + pack.name + '」今天（' + todayStr + '）。',
+      fields: [
+        { label: '武将名' },
+        { label: '出自今日第几抽（可留空）', placeholder: '例如：3' }
+      ]
+    }).then(function(vals){
+      if (!vals || !vals[0]) return;
+      var day = pack.days[todayStr] = pack.days[todayStr] || { draws: [], entries: [], note: '' };
+      var entry = { name: vals[0], type: 'normal' };
+      var idx = parseInt(vals[1], 10);
+      if (idx > 0) entry.drawIndex = idx - 1;
+      day.entries.push(entry);
+      saveState(); renderPacks(); renderHeroTotals();
+    });
   }
 
   function renderHeroTotals(){
@@ -1386,23 +1425,38 @@ textarea::placeholder{color:var(--muted2)}
       Object.keys(days || {}).forEach(function(ds){
         ((days[ds] || {}).entries || []).forEach(function(e){
           var n = (e.name || '未命名').trim();
-          counts[n] = (counts[n] || 0) + 1;
+          var c = counts[n] = counts[n] || { n: 0, core: 0 };
+          c.n += 1;
+          if (e.type === 'core') c.core += 1;
         });
       });
     }
     collect(state.days);
     (state.packs || []).forEach(function(pk){ collect(pk.days); });
     var rows = Object.keys(counts).map(function(n){ return [n, counts[n]]; })
-      .sort(function(a, b){ return b[1] - a[1] || a[0].localeCompare(b[0]); });
-    if (!rows.length) { el.innerHTML = '<span class="hint">暂无出橙记录</span>'; return; }
-    el.innerHTML = rows.slice(0, 40).map(function(r){
-      return '<span class="chip hero-chip">' + esc(r[0]) + ' ×' + r[1] + '</span>';
-    }).join(' ');
+      .sort(function(a, b){ return b[1].n - a[1].n || a[0].localeCompare(b[0]); });
+    if (!rows.length) { el.innerHTML = '<div class="hint">暂无出橙记录</div>'; return; }
+    el.innerHTML = rows.slice(0, 60).map(function(r){
+      var name = r[0], c = r[1];
+      var core = c.core > 0 ? '<span class="hcore">核心 ×' + c.core + '</span>' : '';
+      return '<div class="hrow"><span class="hname' + (c.core > 0 ? ' core' : '') + '">' + esc(name) + '</span>' + core +
+        '<span class="hcount">共 ×' + c.n + '</span></div>';
+    }).join('');
   }
 
   function switchSeason(){
     var next = (state.settings.season || 1) + 1;
-    if (!confirm('进入 S' + next + '？\n大卡包的 5+1 核心保底与 30 抽保底将从今天起重新计数；历史记录保留，小卡包各自独立不受影响。')) return;
+    openDialog({
+      title: '进入 S' + next,
+      hint: '大卡包的 5+1 核心保底与 30 抽保底将从今天起重新计数；历史记录保留，小卡包各自独立不受影响。',
+      confirmOnly: true
+    }).then(function(ok){
+      if (!ok) return;
+      applySeason(next);
+    });
+  }
+
+  function applySeason(next){
     state.settings.season = next;
     state.settings.seasonStart = todayStr;
     var baseDay = state.days[todayStr] || {};
@@ -1722,20 +1776,29 @@ textarea::placeholder{color:var(--muted2)}
   $('#btnQuickNow').addEventListener('click', function(){ $('#quickTime').value = nowTime(); });
   $('#btnNewSeason').addEventListener('click', switchSeason);
   $('#btnPackNew').addEventListener('click', function(){
-    var name = prompt('小卡包名称（例如：S2 霸业 · 名将）');
-    if (!name || !name.trim()) return;
-    var end = prompt('截止日期（YYYY-MM-DD，可留空）', '');
-    var pk = { id: String(Date.now()), name: name.trim(), end: (end || '').trim(), days: {} };
-    state.packs.push(pk);
-    saveState(); renderPacks();
-    $('#packSelect').value = pk.id; renderPacks();
-    toast('已新建小卡包「' + pk.name + '」');
+    openDialog({
+      title: '新建小卡包',
+      hint: '小卡包独立计算保底，结束后保底不保留；出橙记录仍计入武将累计。',
+      fields: [
+        { label: '卡包名称', placeholder: '例如：S2 霸业 · 名将' },
+        { label: '截止日期（可留空）', placeholder: 'YYYY-MM-DD' }
+      ]
+    }).then(function(vals){
+      if (!vals || !vals[0]) return;
+      var pk = { id: String(Date.now()), name: vals[0], end: vals[1] || '', days: {} };
+      state.packs.push(pk);
+      saveState(); renderPacks();
+      $('#packSelect').value = pk.id; renderPacks();
+      toast('已新建小卡包「' + pk.name + '」');
+    });
   });
   $('#btnPackDel').addEventListener('click', function(){
     var pk = activePack(); if (!pk) { toast('先选择一个小卡包'); return; }
-    if (!confirm('删除小卡包「' + pk.name + '」及其记录？')) return;
-    state.packs = state.packs.filter(function(x){ return x.id !== pk.id; });
-    saveState(); renderPacks(); renderHeroTotals();
+    openDialog({ title: '删除小卡包', hint: '删除「' + pk.name + '」及其全部记录？此操作不可撤销。', confirmOnly: true }).then(function(ok){
+      if (!ok) return;
+      state.packs = state.packs.filter(function(x){ return x.id !== pk.id; });
+      saveState(); renderPacks(); renderHeroTotals();
+    });
   });
   $('#packSelect').addEventListener('change', renderPacks);
   $('#btnPackOrange').addEventListener('click', packAddOrange);
@@ -1846,5 +1909,16 @@ textarea::placeholder{color:var(--muted2)}
   renderAll();
 })();
 </script>
+<div class="modal" id="uiModal">
+  <div class="modal-card">
+    <div class="modal-head"><h3 id="uiTitle">操作</h3><button class="icon-btn" id="uiClose">×</button></div>
+    <div class="hint" id="uiHint"></div>
+    <div id="uiFields"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+      <button class="btn" id="uiCancel">取消</button>
+      <button class="btn primary" id="uiOk">确定</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
