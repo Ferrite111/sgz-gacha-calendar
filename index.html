@@ -154,9 +154,11 @@ h1{
   .pack-panel{padding:18px 20px}
   .pack-pity-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px}
   .pack-pity-grid .pity{padding:14px 16px;gap:14px}
-  .pack-pity-grid .ring-wrap{width:96px;height:96px;flex:0 0 96px}
+  .pack-pity-grid .ring-wrap{width:104px;height:104px;flex:0 0 104px}
+  .pack-pity-grid .ring-center{gap:2px;text-align:center;padding:0 6px}
+  .pack-pity-grid .ring-center span:last-child{font-size:9.5px;color:var(--muted);letter-spacing:.04em;white-space:nowrap;line-height:1.2}
   .pack-pity-grid .ring{width:100%;height:100%}
-  #packRingNumCore,#packRingNumDraw{font-family:KaiTi,"STKaiti",serif;font-size:30px;font-weight:800;line-height:1;color:var(--gold-hi)}
+  #packRingNumCore,#packRingNumDraw{font-family:KaiTi,"STKaiti",serif;font-size:22px;font-weight:800;line-height:1.05;color:var(--gold-hi);letter-spacing:.01em}
   .draw-pity #packRingNumDraw{color:#d9cfff}
   @media(max-width:760px){.pack-pity-grid{grid-template-columns:1fr}}
   .hero-total-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;padding-top:2px}
@@ -1469,8 +1471,8 @@ textarea::placeholder{color:var(--muted2)}
     coreFg.style.strokeDasharray = String(C);
     coreFg.style.strokeDashoffset = String(C * (1 - coreProgress));
     coreWrap.classList.toggle('ready', coreReady);
-    coreNum.textContent = expired ? '—' : String(cc.normalsSinceCore);
-    coreUnit.textContent = expired ? '已过期' : ('/ ' + interval + ' 个普通橙');
+    coreNum.textContent = expired ? '—' : (cc.normalsSinceCore + '/' + interval);
+    coreUnit.textContent = expired ? '已过期' : '普通橙';
     coreMain.classList.toggle('ready', coreReady);
     coreMain.textContent = expired ? '已过期：核心计数失效' : (coreReady ? '下一个普通橙必为核心！' : ('还差 ' + cc.remain + ' 个普通橙出核心'));
     coreSub.textContent = expired ? '记录保留，保底不再清算' : ('本包已出核心 ' + cc.cores + ' 次 · 普通橙 ' + cc.normalsSinceCore + ' 个');
@@ -1486,8 +1488,8 @@ textarea::placeholder{color:var(--muted2)}
     drawFg.style.strokeDasharray = String(C);
     drawFg.style.strokeDashoffset = String(C * (1 - drawProgress));
     drawWrap.classList.toggle('ready', drawReady);
-    drawNum.textContent = expired ? '—' : String(cp.pity);
-    drawUnit.textContent = expired ? '已过期' : ('/ ' + cap + ' 抽');
+    drawNum.textContent = expired ? '—' : (cp.pity + '/' + cap);
+    drawUnit.textContent = expired ? '已过期' : '抽未出橙';
     drawMain.classList.toggle('ready', drawReady);
     drawMain.textContent = expired ? '已过期：30 抽保底失效' : (drawReady ? '这一抽必出橙将！' : ('距 ' + cap + ' 抽保底还有 ' + cp.remain + ' 抽'));
     drawSub.textContent = expired ? '记录保留，保底不再清算' : ('本包累计 ' + cp.total + ' 抽' + (cp.last ? (' · 上次出橙 ' + esc(cp.last.name)) : ''));
@@ -1611,13 +1613,17 @@ textarea::placeholder{color:var(--muted2)}
   }
 
   function switchSeason(){
-    var next = (state.settings.season || 1) + 1;
+    var current = state.settings.season || 1;
+    var options = [];
+    for (var i = 1; i <= 8; i++) options.push({ value: String(i), label: 'S' + i });
     openDialog({
-      title: '进入 S' + next,
-      hint: '大卡包的 5+1 核心保底与 30 抽保底将从今天起重新计数；历史记录保留，小卡包各自独立不受影响。',
-      confirmOnly: true
-    }).then(function(ok){
-      if (!ok) return;
+      title: '切换赛季',
+      hint: '切换后，大卡包的 5+1 核心保底与 30 抽保底将从今天起重新计数；历史记录保留，小卡包各自独立不受影响。可回退到之前赛季（同样会重置当前计数）。',
+      fields: [{ label: '目标赛季', type: 'select', options: options, value: String(current) }]
+    }).then(function(vals){
+      if (!vals) return;
+      var next = parseInt(vals[0], 10);
+      if (!next || next === current) return;
       applySeason(next);
     });
   }
