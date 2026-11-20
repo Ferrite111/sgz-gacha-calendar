@@ -140,8 +140,15 @@ h1{
   .hero-totals{display:flex;flex-wrap:wrap;gap:6px;padding-top:4px}
   .hero-chip{font-size:12px;padding:3px 9px}
   .pack-panel{padding:18px 20px}
-  .hero-total-list{display:flex;flex-direction:column;gap:6px;max-height:280px;overflow:auto;padding-right:4px}
-  .hrow .hcount{margin-left:auto;color:var(--gold);font-weight:700;font-size:12.5px}
+  .hero-total-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;padding-top:2px}
+  .hero-cell{display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:10px;background:rgba(255,255,255,.028);border:1px solid rgba(255,255,255,.05);font-size:12.5px}
+  .hero-cell .hname{font-weight:700;color:#c9bdf2}
+  .hero-cell .hname.core{color:var(--gold-hi)}
+  .hero-cell .hcore{color:#3a2a10;background:linear-gradient(135deg,#f7dfa5,#e2ab46);border-radius:999px;padding:0 8px;font-weight:700;font-size:10.5px}
+  .hero-cell .hcount{margin-left:auto;color:var(--gold);font-weight:700}
+  .hero-cell .hdate{color:var(--muted2);font-size:11px}
+  .hsort{display:flex;gap:6px;margin-left:auto}
+  .hsort .btn.active{color:var(--gold-hi);border-color:var(--line-strong)}
   #uiFields input{width:100%;background:rgba(255,255,255,.045);border:1px solid var(--line);border-radius:10px;color:var(--text);padding:10px 12px;font:inherit;font-size:13.5px;outline:none}
   #uiFields input:focus{border-color:var(--line-strong)}
 .dots{display:flex;gap:7px;margin:11px 0 9px}
@@ -545,18 +552,18 @@ textarea::placeholder{color:var(--muted2)}
     </div>
     <div class="quick-btns">
       <select id="packSelect" class="pack-select"><option value="">选择小卡包…</option></select>
-      <button class="btn small" id="btnPackNew">新建卡包</button>
-      <button class="btn small ghost" id="btnPackDel">删除</button>
+      <button class="btn" id="btnPackNew">新建卡包</button>
+      <button class="btn" id="btnPackDel">删除</button>
       <button class="btn small" data-pk="free">单抽 +1</button>
       <button class="btn small" data-pk="five">五连 +5</button>
-      <button class="btn small" id="btnPackOrange">记录出橙</button>
+      <button class="btn primary" id="btnPackOrange">记录出橙</button>
     </div>
     <div class="pity-sub" id="packPity"></div>
     <div class="pack-records" id="packRecords"></div>
   </section>
 
   <section class="panel hero-total-panel">
-    <div class="history-head"><span class="history-title">武将累计（大卡包 + 小卡包）</span></div>
+    <div class="history-head"><span class="history-title">武将累计（大卡包 + 小卡包）</span><div class="hsort"><button class="btn small" data-hero-sort="count">按次数</button><button class="btn small" data-hero-sort="time">按时间</button></div></div>
     <div id="heroTotals" class="hero-total-list"><div class="hint">暂无出橙记录</div></div>
   </section>
 
@@ -1296,6 +1303,10 @@ textarea::placeholder{color:var(--muted2)}
       $('#uiHint').textContent = opts.hint || '';
       var fields = opts.fields || [];
       $('#uiFields').innerHTML = fields.map(function(f, i){
+        if (f.type === 'select') {
+          var opts = (f.options || []).map(function(o){ return '<option value="' + esc(o.value) + '"' + (String(f.value) === String(o.value) ? ' selected' : '') + '>' + esc(o.label) + '</option>'; }).join('');
+          return '<label class="field-label">' + esc(f.label) + '<select id="uiF' + i + '" style="width:100%">' + opts + '</select></label>';
+        }
         return '<label class="field-label">' + esc(f.label) + '<input id="uiF' + i + '" type="' + (f.type || 'text') + '" placeholder="' + esc(f.placeholder || '') + '" value="' + esc(f.value || '') + '"></label>';
       }).join('');
       modal.classList.add('open');
@@ -1380,7 +1391,15 @@ textarea::placeholder{color:var(--muted2)}
     var lines = [];
     Object.keys(pack.days || {}).sort().reverse().slice(0, 8).forEach(function(ds){
       var day = pack.days[ds] || {};
-      var names = (day.entries || []).map(function(e){ return esc(e.name || '橙将') + (e.drawIndex != null ? ('(第' + (e.drawIndex + 1) + '抽)') : ''); }).join('、');
+      var names = (day.entries || []).map(function(e){
+        var ref = '';
+        if (e.drawIndex != null && day.draws && day.draws[e.drawIndex]) {
+          var dref = day.draws[e.drawIndex];
+          var label = (DRAW_KINDS[dref.kind] || {}).label || '抽';
+          ref = label + (drawUnits(dref) > 1 && e.sub != null ? ('第' + (e.sub + 1) + '抽') : '');
+        }
+        return esc(e.name || '橙将') + (e.type === 'core' ? '[核心]' : '') + (ref ? ('（' + ref + '）') : '');
+      }).join('、');
       lines.push('<div class="hrow"><span class="hdate">' + ds + '</span><span class="hname">' + dayDraws(day) + ' 抽</span>' + (names ? ('<span class="hpity">橙：' + names + '</span>') : '') + '</div>');
     });
     rec.innerHTML = lines.join('') || '<div class="hint">暂无记录</div>';
@@ -1399,19 +1418,32 @@ textarea::placeholder{color:var(--muted2)}
     var pack = activePack();
     if (!pack) { toast('先新建/选择一个小卡包'); return; }
     if (packExpired(pack)) { toast('该小卡包已过期'); return; }
+    var day = pack.days[todayStr] = pack.days[todayStr] || { draws: [], entries: [], note: '' };
+    var refs = [{ value: '', label: '未指定' }];
+    (day.draws || []).forEach(function(d, i){
+      var units = drawUnits(d);
+      for (var k = 1; k <= units; k++) {
+        var sub = units > 1 ? k - 1 : 0;
+        var base = (DRAW_KINDS[d.kind] || {}).label || '抽';
+        refs.push({ value: i + ':' + sub, label: '今日 ' + base + (units > 1 ? (' 第' + k + '抽') : '') });
+      }
+    });
     openDialog({
       title: '记录小卡包出橙',
-      hint: '记录到「' + pack.name + '」今天（' + todayStr + '）。',
+      hint: '记录到「' + pack.name + '」今天（' + todayStr + '）；出橙次序会用于计算本包保底。',
       fields: [
         { label: '武将名' },
-        { label: '出自今日第几抽（可留空）', placeholder: '例如：3' }
+        { label: '出自哪一抽', type: 'select', options: refs },
+        { label: '类型', type: 'select', options: [{ value: 'normal', label: '普通橙将' }, { value: 'core', label: '核心橙将（5+1）' }] }
       ]
     }).then(function(vals){
       if (!vals || !vals[0]) return;
-      var day = pack.days[todayStr] = pack.days[todayStr] || { draws: [], entries: [], note: '' };
-      var entry = { name: vals[0], type: 'normal' };
-      var idx = parseInt(vals[1], 10);
-      if (idx > 0) entry.drawIndex = idx - 1;
+      var entry = { name: vals[0], type: vals[2] === 'core' ? 'core' : 'normal' };
+      if (vals[1]) {
+        var parts = vals[1].split(':');
+        entry.drawIndex = parseInt(parts[0], 10);
+        entry.sub = parseInt(parts[1], 10) || 0;
+      }
       day.entries.push(entry);
       saveState(); renderPacks(); renderHeroTotals();
     });
@@ -1425,22 +1457,28 @@ textarea::placeholder{color:var(--muted2)}
       Object.keys(days || {}).forEach(function(ds){
         ((days[ds] || {}).entries || []).forEach(function(e){
           var n = (e.name || '未命名').trim();
-          var c = counts[n] = counts[n] || { n: 0, core: 0 };
+          var c = counts[n] = counts[n] || { n: 0, core: 0, last: '' };
           c.n += 1;
           if (e.type === 'core') c.core += 1;
+          if (ds > c.last) c.last = ds;
         });
       });
     }
     collect(state.days);
     (state.packs || []).forEach(function(pk){ collect(pk.days); });
-    var rows = Object.keys(counts).map(function(n){ return [n, counts[n]]; })
-      .sort(function(a, b){ return b[1].n - a[1].n || a[0].localeCompare(b[0]); });
+    var sortMode = state.settings.heroSort || 'count';
+    var rows = Object.keys(counts).map(function(n){ return [n, counts[n]]; });
+    if (sortMode === 'time') rows.sort(function(a, b){ return (b[1].last || '').localeCompare(a[1].last || '') || b[1].n - a[1].n; });
+    else rows.sort(function(a, b){ return b[1].n - a[1].n || a[0].localeCompare(b[0]); });
+    var btns = document.querySelectorAll('[data-hero-sort]');
+    btns.forEach(function(b){ b.classList.toggle('active', b.dataset.heroSort === sortMode); });
     if (!rows.length) { el.innerHTML = '<div class="hint">暂无出橙记录</div>'; return; }
-    el.innerHTML = rows.slice(0, 60).map(function(r){
+    el.innerHTML = rows.slice(0, 120).map(function(r){
       var name = r[0], c = r[1];
-      var core = c.core > 0 ? '<span class="hcore">核心 ×' + c.core + '</span>' : '';
-      return '<div class="hrow"><span class="hname' + (c.core > 0 ? ' core' : '') + '">' + esc(name) + '</span>' + core +
-        '<span class="hcount">共 ×' + c.n + '</span></div>';
+      var core = c.core > 0 ? '<span class="hcore">核心×' + c.core + '</span>' : '';
+      return '<div class="hero-cell"><span class="hname' + (c.core > 0 ? ' core' : '') + '">' + esc(name) + '</span>' + core +
+        '<span class="hdate">' + (c.last ? c.last.slice(5) : '') + '</span>' +
+        '<span class="hcount">×' + c.n + '</span></div>';
     }).join('');
   }
 
@@ -1801,6 +1839,9 @@ textarea::placeholder{color:var(--muted2)}
     });
   });
   $('#packSelect').addEventListener('change', renderPacks);
+  document.querySelectorAll('[data-hero-sort]').forEach(function(btn){
+    btn.addEventListener('click', function(){ state.settings.heroSort = btn.dataset.heroSort; saveState(); renderHeroTotals(); });
+  });
   $('#btnPackOrange').addEventListener('click', packAddOrange);
   document.querySelectorAll('[data-pk]').forEach(function(btn){
     btn.addEventListener('click', function(){ packAddDraw(btn.dataset.pk); });
